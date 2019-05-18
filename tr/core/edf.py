@@ -6,6 +6,7 @@ from tr.core.resources import f1_in, f2_out
 from tr.core.parsers import excel_to_book, book_to_kwargs_MPO
 from tr.core.common import FleetManagerBase
 from tr.core.utils import advance_date, dates_between
+from tr.core.csp import Variable, Assignment, Schedule
 
 import pulp as plp
 
@@ -114,18 +115,37 @@ class SchedulerEDF(FleetManagerBase):
         # root = Tree()
 
     def cspify(self, context):
-        csp_context = {}
-
         #order vars by due date
-        for aircraft in context.keys():
-            csp_context['vars'].append({
-                aircraft:
-                context[aircraft]['A_Initial']['last_due_date'].timestamp()
-            })
+        sorted_x = sorted(
+            context.items(),
+            key=lambda kv: kv[1]['A_Initial']['due_date'].timestamp(),
+            reverse=True)
+        sorted_dict = OrderedDict(sorted_x)
 
-        csp_context['vars'] = []
-        csp_context['vars_domains'] = []
-        return csp_context
+        ordered_vars = []
+        for key in sorted_dict:
+            start_date = sorted_dict[key]['A_Initial']['last_due_date']
+            end_date = sorted_dict[key]['A_Initial']['due_date']
+            domain = self.get_domain(start_date, end_date)
+            var = Variable(name=key, domain=domain)
+            ordered_vars.append(var)
+
+        assignment = Assignment(ordered_vars)
+        return assignment
+
+    def get_domain(self, date_start, date_end, check_type='a-type'):
+        domain = []
+        domain.append(date_start)
+        due_date = date_start
+        while due_date <= date_end:
+            due_date = advance_date(due_date, days=int(1))
+            if self.calendar.calendar[due_date]['allowed'][
+                    'public holidays'] and self.calendar.calendar[due_date][
+                        'allowed']['a-type']:
+                for _ in range(self.calendar.calendar[due_date]['resources']
+                               ['slots'][check_type]):
+                    domain.append(due_date)
+        return domain
 
     def is_context_done(self, context):
         for aircraft in context.keys():

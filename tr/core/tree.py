@@ -30,15 +30,20 @@ class NodeSchedule(treelib.Node):
         ]
 
     def expand_with_heuristic(self, csp, assignment, action_var):
-        return [
-            self.child_node(csp, assignment, action_var, action_value)
-            for action_value in csp.select_next_value(assignment, action_var)
-        ]
+        childs = []
+        for action_value in csp.select_next_value(assignment, action_var):
+            child = self.child_node(csp, assignment, action_var, action_value)
+            if child != None:
+                childs.append(child)
+        return
 
     def child_node(self, csp, assignment, action_var, action_value):
         next_assignment = csp.do_next_assignment(assignment, action_var,
                                                  action_value)
-        return NodeSchedule(next_assignment, self, action_var, action_value)
+        if next_assignment != None:
+            return NodeSchedule(next_assignment, self, action_var,
+                                action_value)
+        return None
 
 
 class NodeExample:

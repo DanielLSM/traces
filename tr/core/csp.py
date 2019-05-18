@@ -16,7 +16,8 @@ class Constraint:
 
 
 class Variable:
-    def __init__(self, domain, info, *args, **kwargs):
+    def __init__(self, name, domain, info=None, *args, **kwargs):
+        self.name = name
         self.domain = domain
         self._info = info
 
@@ -33,7 +34,8 @@ class Assignment:
 
     def assign(self, var, value):
         assert var in self.unassigned_vars, "var already assigned"
-        self.unassigned_vars.remove(var)  #pop
+        # self.unassigned_vars.remove(var)  #pop
+        self.unassigned_vars.pop()
         self.assignment[var] = value
         self.vars_domain[var] = value
 
@@ -51,34 +53,31 @@ class Assignment:
 
 
 class Schedule(Assignment):
-    def __init__(self, vars, due_dates, *args, **kwargs):
+    def __init__(self, vars, *args, **kwargs):
         super().__init__(self, vars, *args)
-        self.due_dates = due_dates
-        self.ordered_vars = self.order_var_earliest_due_date()
-        self.ordered_domain = self.order_domain_due_date()
 
     def assign(self, var, value):
         super().assign(var, value)
-        self.ordered_vars.pop()
+        self.unassigned_vars.pop()
 
     #TODO lets do the processing here
     def order_var_earliest_due_date(self):
-        ordered_vars = self.vars
-        return ordered_vars
+        pass
 
-    #TODO this is naturally done when building the domain
+    #TODO this is naturally done when building the domain!
     def order_domain_due_date(self):
-        return self.vars_domain
+        pass
 
     def render(self):
         raise NotImplementedError
 
 
 class CSP:
-    def __init__(self, vars, constraints, *args, **kwargs):
+    def __init__(self, vars, constraints=None, *args, **kwargs):
         self.vars = vars
         self.constraints = constraints  #maps vars to constraints
-        self.vars_constraints = {var: [] for var in self.vars}
+        if self.constraints:
+            self.vars_constraints = {var: [] for var in self.vars}
 
     #we can make an yield on this one
     def select_next_var(self, assignment):
@@ -127,6 +126,8 @@ class CSPSchedule(CSP):
     def arc_consistency(self, assignment, value):
         for var in assignment.unassigned:
             assignment.vars_domain[var].remove(value)
+            if len(assignment.vars_domain[var]) == 0:
+                return None
         return assignment
 
     #order by shortest due_date
@@ -137,8 +138,7 @@ class CSPSchedule(CSP):
     #order by value closest to due_date
     #it helps if domains are ordered already
     def value_ordering_heuristic(self, schedule_assign, var):
-        value = 0
-        return value
+        return schedule_assign.vars_domain[var][-1]
 
     def select_next_var(self, schedule_assign):
         return self.variable_ordering_heuristic(schedule_assign)
