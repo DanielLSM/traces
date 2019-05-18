@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from collections import OrderedDict, defaultdict
 
-# from reals.core.schedule_classes import Calendar, Check
+# from tr.core.schedule_classes import Calendar, Check
 
 
 def advance_date(date, *args, **kwargs):

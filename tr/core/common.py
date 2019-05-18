@@ -3,9 +3,9 @@ import pandas as pd
 import time
 from collections import OrderedDict, defaultdict
 
-from reals.core.resources import f1_in, f2_out
-from reals.core.parser import book_to_kwargs_MPO
-from reals.core.utils import advance_date, dates_between
+from tr.core.resources import f1_in, f2_out
+from tr.core.parser import book_to_kwargs_MPO
+from tr.core.utils import advance_date, dates_between
 
 
 def get_calendar(start_date, end_date, type='days'):
@@ -261,7 +261,7 @@ class FleetManagerBase:
 if __name__ == '__main__':
     import time
     time0 = time.time()
-    from reals.core.parser import excel_to_book
+    from tr.core.parser import excel_to_book
     try:
         book = excel_to_book(f1_in)
     except Exception as e:

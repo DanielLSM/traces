@@ -1,8 +1,8 @@
 import pandas as pd
 import random
-from reals.core.resources import f1_in, f2_out
-from reals.core.utils import dict_to_list, diff_time_list, get_slots
-from reals.core.utils import advance_date
+from tr.core.resources import f1_in, f2_out
+from tr.core.utils import dict_to_list, diff_time_list, get_slots
+from tr.core.utils import advance_date
 
 from collections import OrderedDict, defaultdict
 

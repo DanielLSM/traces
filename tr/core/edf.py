@@ -2,11 +2,11 @@ import numpy
 import pandas as pd
 from collections import OrderedDict, defaultdict
 
-from reals import f1_in, f2_out
-from reals.core.parser import excel_to_book, book_to_kwargs_MPO
-from reals.core.schedule_classes import FleetManagerBase
-from reals.core.utils import advance_date, dates_between
-# from reals.core.tree import Tree
+from tr import f1_in, f2_out
+from tr.core.parsers import excel_to_book, book_to_kwargs_MPO
+from tr.core.schedule_classes import FleetManagerBase
+from tr.core.utils import advance_date, dates_between
+# from tr.core.tree import Tree
 
 import pulp as plp
 
