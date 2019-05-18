@@ -40,7 +40,10 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['FC LOST'] = []
 
         while not self.is_context_done(context):
-            schedule_partial = self.generate_schedules_heuristic(context)
+            # import ipdb
+            # ipdb.set_trace()
+            context_csp = self.cspify(context)
+            # schedule_partial = self.generate_schedules_heuristic(context)
             # here we will call backtrack
 
             for aircraft in self.fleet.aircraft_info.keys():
@@ -110,6 +113,20 @@ class SchedulerEDF(FleetManagerBase):
         df.to_excel('output.xlsx')
         # root = Tree()
 
+    def cspify(self, context):
+        csp_context = {}
+
+        #order vars by due date
+        for aircraft in context.keys():
+            csp_context['vars'].append({
+                aircraft:
+                context[aircraft]['A_Initial']['last_due_date'].timestamp()
+            })
+
+        csp_context['vars'] = []
+        csp_context['vars_domains'] = []
+        return csp_context
+
     def is_context_done(self, context):
         for aircraft in context.keys():
             if context[aircraft]['A_Initial']['due_date'] > self.end_date:
@@ -163,6 +180,8 @@ class SchedulerEDF(FleetManagerBase):
                 waste[1] += self.fleet.aircraft_info[aircraft]['DFH'][month]
                 waste[2] += self.fleet.aircraft_info[aircraft]['DFC'][month]
 
+        import ipdb
+        ipdb.set_trace()
         print("ERROR: IMPOSSIBLE SCHEDULE")
         return calendar, 'IMPOSSIBLE'
 
