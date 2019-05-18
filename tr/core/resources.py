@@ -1,2 +1,2 @@
-f1_in = "~/local-dev/real-schedule/resources/MPO Input.xlsx"
-f2_out = "~/local-dev/real-schedule/resources/MPO Schedule.xls"
+f1_in = "~/local-dev/tr/resources/MPO Input.xlsx"
+f2_out = "~/local-dev/tr/resources/MPO Schedule.xls"
