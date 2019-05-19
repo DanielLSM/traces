@@ -1,6 +1,7 @@
 # https://github.com/jonalloub/Iterative-Deepening-Search-5-Puzzle/blob/master/SearchAgent.py
 from tr.core.csp import CSPSchedule, Variable, Constraint, Schedule, Assignment
 from tr.core.tree import NodeX, NodeSchedule
+from tr.core.csp import CSPSchedule
 from treelib import Tree
 
 
@@ -58,15 +59,20 @@ class BacktrackSchedule:
 class BacktrackTreelib:
     def __init__(self, csp, start_assign, *args, **kwargs):
         assert isinstance(csp, CSPSchedule), "problem is not CSP"
-        assert isinstance(start_assign, Schedule), "assignment is not valid"
+        assert isinstance(start_assign, Assignment), "assignment is not valid"
         self.csp = csp
         self.start_assign = start_assign
         self.tree = Tree()
-        self.root = self.tree("Root", "root", data={})
+        root = NodeSchedule(self.start_assign, tag="Root", identifier="root")
+        self.tree.add_node(root)
 
     def solve(self, node_schedule, limit=100):
-        if self.csp.satisfied_assignment(node_schedule.assignment):
-            return node_schedule
+        try:
+            if self.csp.satisfied_assignment(node_schedule.assignment):
+                return node_schedule
+        except:
+            import ipdb
+            ipdb.set_trace()
 
         if limit == 0:
             return "cutoff"
@@ -78,10 +84,10 @@ class BacktrackTreelib:
         cutoff = False
         # here when we expand the childs, we need to fix domain
         for child in node_schedule.expand_with_heuristic(
-                self.csp, node_schedule.assignment, next_var, limit=100):
+                self.csp, node_schedule.assignment, next_var):
             self.tree[node_schedule].count += 1
             self.tree.add_node(child, node_schedule)
-            next_node = self.solve(child)
+            next_node = self.solve(child, limit - 1)
             if next_node == "cutoff":
                 cutoff = True
             elif next_node != None:
@@ -92,6 +98,18 @@ class BacktrackTreelib:
         # if not var: return None
 
         # value = self.csp.select_next_value(node_schedule.schedule_assign, var)
+
+
+#TODO you should be able to start from an assignment or a tree
+def solve_csp_schedule(assignment_start):
+    csp_problem = CSPSchedule(assignment_start.vars)
+    backtrack = BacktrackTreelib(csp_problem, assignment_start)
+    import ipdb
+    ipdb.set_trace()
+    root = backtrack.tree.get_node(backtrack.tree.root)
+    result = backtrack.solve(root)
+    ipdb.set_trace()
+    return result
 
 
 if __name__ == "__main__":

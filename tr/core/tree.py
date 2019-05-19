@@ -10,12 +10,22 @@ class NodeX(treelib.Node):
 
 
 class NodeSchedule(treelib.Node):
-    def __init__(self, assignment, action_var, action_value, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self,
+                 assignment,
+                 action_var=None,
+                 action_value=None,
+                 tag=None,
+                 identifier=None,
+                 *args,
+                 **kwargs):
+        if tag == None:
+            self.tag = "{}={}".format(action_var, action_value)
+        if identifier == None:
+            self.identifier = "{}={}".format(action_var, action_value)
+        super().__init__(tag=tag, identifier=identifier, *args, **kwargs)
         self.assignment = assignment  #state of the world
         self.action_var = action_var
         self.action_value = action_value
-        self.tag = "{}={}".format(action_var, action_value)
         self.count = 0
         #parent is passed on *args
 
@@ -31,7 +41,7 @@ class NodeSchedule(treelib.Node):
 
     def expand_with_heuristic(self, csp, assignment, action_var):
         childs = []
-        for action_value in csp.select_next_value(assignment, action_var):
+        for action_value in csp.select_next_values(assignment, action_var):
             child = self.child_node(csp, assignment, action_var, action_value)
             if child != None:
                 childs.append(child)

@@ -7,6 +7,7 @@ from tr.core.parsers import excel_to_book, book_to_kwargs_MPO
 from tr.core.common import FleetManagerBase
 from tr.core.utils import advance_date, dates_between
 from tr.core.csp import Variable, Assignment, Schedule
+from tr.core.backtrack import solve_csp_schedule
 
 import pulp as plp
 
@@ -43,7 +44,8 @@ class SchedulerEDF(FleetManagerBase):
         while not self.is_context_done(context):
             # import ipdb
             # ipdb.set_trace()
-            context_csp = self.cspify(context)
+            csp_vars = self.cspify(context)
+            schedule_partial = solve_csp_schedule(csp_vars)
             # schedule_partial = self.generate_schedules_heuristic(context)
             # here we will call backtrack
 
