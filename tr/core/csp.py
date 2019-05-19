@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy
 
 
 class Constraint:
@@ -34,8 +35,13 @@ class Assignment:
         self.vars_domain = {var.name: var.domain for var in variables}
 
     def assign(self, var_name, value):
-        assert var_name not in self.unassigned_vars, "var already assigned"
+        try:
+            assert var_name in self.unassigned_vars, "var already assigned"
+        except:
+            import ipdb
+            ipdb.set_trace()
         # self.unassigned_vars.remove(var)  #pop
+        # print("NOT NODE:var:{}, value:{}".format(var_name, value))
         self.unassigned_vars.pop()
         self.assignment[var_name] = value
         self.vars_domain[var_name] = value
@@ -121,14 +127,14 @@ class CSP:
 
 class CSPSchedule:
     def __init__(self, vars=[], constraints=None, *args, **kwargs):
-        # import ipdb
-        # ipdb.set_trace()
-        # super().__init__(self, vars=vars)
+
         self.vars = vars
 
     def do_next_assignment(self, assignment, variable, value):
-        assignment.assign(variable, value)
-        next_assignment = self.arc_consistency(assignment, value)
+
+        next_assignment = deepcopy(assignment)
+        next_assignment.assign(variable, value)
+        next_assignment = self.arc_consistency(next_assignment, value)
         return next_assignment
 
     def arc_consistency(self, assignment, value):
@@ -142,21 +148,14 @@ class CSPSchedule:
         assert len(self.vars) == len(assignment.vars), "variables mismatch"
         if len(assignment.unassigned_vars) == 0:
             return True
-
-        # for constraint in self.constraints:
-        #     if not constraint.satisfied():
-        #         return False
         return False
 
-    #order by shortest due_date
-    #it helps if variables are ordered already
     def variable_ordering_heuristic(self, schedule_assign):
         return schedule_assign.unassigned_vars[-1]
 
-    #order by value closest to due_date
-    #it helps if domains are ordered already
     def value_ordering_heuristic(self, schedule_assign, var):
-        return schedule_assign.vars_domain[var]
+        return schedule_assign.vars_domain[var]  #schedule by early date
+        # return schedule_assign.vars_domain[var][::-1] #schedule by due date
 
     def select_next_var(self, schedule_assign):
         return self.variable_ordering_heuristic(schedule_assign)

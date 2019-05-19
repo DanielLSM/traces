@@ -42,10 +42,11 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['FC LOST'] = []
 
         while not self.is_context_done(context):
-            # import ipdb
-            # ipdb.set_trace()
             csp_vars = self.cspify(context)
             schedule_partial = solve_csp_schedule(csp_vars)
+
+            import ipdb
+            ipdb.set_trace()
             # schedule_partial = self.generate_schedules_heuristic(context)
             # here we will call backtrack
 
@@ -128,25 +129,33 @@ class SchedulerEDF(FleetManagerBase):
         for key in sorted_dict:
             start_date = sorted_dict[key]['A_Initial']['last_due_date']
             end_date = sorted_dict[key]['A_Initial']['due_date']
-            domain = self.get_domain(start_date, end_date)
+            domain = self.get_domain(start_date, end_date, key=key)
             var = Variable(name=key, domain=domain)
             ordered_vars.append(var)
 
         assignment = Assignment(ordered_vars)
         return assignment
 
-    def get_domain(self, date_start, date_end, check_type='a-type'):
+    def get_max_slots(self, due_date):
+        check_types = ['a-type', 'c-type']
+        slots = [
+            self.calendar.calendar[due_date]['resources']['slots'][check]
+            for check in check_types
+        ]
+        max_slots = max(slots)
+        return max_slots
+
+    def get_domain(self, date_start, date_end, check_type='a-type', key=None):
         domain = []
         domain.append(date_start)
         due_date = date_start
         while due_date <= date_end:
-            due_date = advance_date(due_date, days=int(1))
             if self.calendar.calendar[due_date]['allowed'][
                     'public holidays'] and self.calendar.calendar[due_date][
                         'allowed']['a-type']:
-                for _ in range(self.calendar.calendar[due_date]['resources']
-                               ['slots'][check_type]):
+                for _ in range(self.get_max_slots(due_date)):
                     domain.append(due_date)
+            due_date = advance_date(due_date, days=int(1))
         return domain
 
     def is_context_done(self, context):
