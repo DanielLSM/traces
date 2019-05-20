@@ -139,7 +139,8 @@ class CSPSchedule:
 
     def arc_consistency(self, assignment, value):
         for var_name in assignment.unassigned_vars:
-            assignment.vars_domain[var_name].remove(value)
+            if value in assignment.vars_domain[var_name]:
+                assignment.vars_domain[var_name].remove(value)
             if len(assignment.vars_domain[var_name]) == 0:
                 return None
         return assignment

@@ -1,5 +1,7 @@
 import pandas as pd
 import random
+import datetime
+
 from tr.core.resources import f1_in, f2_out
 from tr.core.utils import dict_to_list, diff_time_list, get_slots
 from tr.core.utils import advance_date
@@ -44,8 +46,13 @@ def book_to_kwargs_MPO(book):
     m_type_restriction['all'] = {'time': all_time}
 
     # TODO
+    end = datetime.datetime(2022, 2, 1, 0, 0)
     start_date = pd.to_datetime(book['Additional'][2017][1])
-    end_date = advance_date(start_date, years=1)
+    end_date = pd.to_datetime(end)
+
+    # import ipdb
+    # ipdb.set_trace()
+    # end_date = advance_date(start_date, years=1)
 
     m_type_restriction['start_date'] = start_date
     m_type_restriction['end_date'] = end_date
