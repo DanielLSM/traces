@@ -33,6 +33,8 @@ class SchedulerEDF(FleetManagerBase):
         global_schedule = OrderedDict()
         for aircraft in context.keys():
             global_schedule[aircraft] = {}
+            global_schedule[aircraft]['last_due_dates'] = []
+            global_schedule[aircraft]['assigned_dates'] = []
             global_schedule[aircraft]['due_dates'] = []
             global_schedule[aircraft]['DY'] = []
             global_schedule[aircraft]['FH'] = []
@@ -46,35 +48,30 @@ class SchedulerEDF(FleetManagerBase):
             ipdb.set_trace()
 
             csp_vars = self.cspify(context)
-            schedule_partial = solve_csp_schedule(csp_vars)
-
-            # schedule_partial = self.generate_schedules_heuristic(context)
-            # here we will call backtrack
+            assignment, tree = solve_csp_schedule(csp_vars)
+            schedule_partial = self.get_schedule_stats(assignment, context)
 
             for aircraft in self.fleet.aircraft_info.keys():
-                maxDY = self.fleet.aircraft_info[aircraft]['A_Initial'][
-                    checks['A_Initial']['max-days']]
-                maxFH = self.fleet.aircraft_info[aircraft]['A_Initial'][
-                    checks['A_Initial']['max-hours']]
-                maxFC = self.fleet.aircraft_info[aircraft]['A_Initial'][
-                    checks['A_Initial']['max-cycles']]
+
+                global_schedule[aircraft]['last_due_dates'].append(
+                    schedule_partial[aircraft]['A_Initial']['last_due_date'])
+                global_schedule[aircraft]['assigned_dates'].append(
+                    schedule_partial[aircraft]['A_Initial']['due_date'])
                 global_schedule[aircraft]['due_dates'].append(
                     schedule_partial[aircraft]['A_Initial']['due_date'])
+
                 global_schedule[aircraft]['DY'].append(
-                    maxDY -
-                    schedule_partial[aircraft]['A_Initial']['waste'][0])
+                    schedule_partial[aircraft]['A_Initial']['DY'])
                 global_schedule[aircraft]['FH'].append(
-                    maxFH -
-                    schedule_partial[aircraft]['A_Initial']['waste'][1])
+                    schedule_partial[aircraft]['A_Initial']['FH'])
                 global_schedule[aircraft]['FC'].append(
-                    maxFC -
-                    schedule_partial[aircraft]['A_Initial']['waste'][2])
+                    schedule_partial[aircraft]['A_Initial']['FC'])
                 global_schedule[aircraft]['DY LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['waste'][0])
+                    schedule_partial[aircraft]['A_Initial']['DY LOST'])
                 global_schedule[aircraft]['FH LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['waste'][1])
+                    schedule_partial[aircraft]['A_Initial']['FH LOST'])
                 global_schedule[aircraft]['FC LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['waste'][2])
+                    schedule_partial[aircraft]['A_Initial']['FC LOST'])
             context = self.compute_next_context(schedule_partial,
                                                 self.end_date)
 
@@ -116,7 +113,6 @@ class SchedulerEDF(FleetManagerBase):
 
         print(df)
         df.to_excel('output.xlsx')
-        # root = Tree()
 
     def cspify(self, context):
         #order vars by due date
@@ -189,6 +185,62 @@ class SchedulerEDF(FleetManagerBase):
                     calendar, aircraft, context[aircraft]['A_Initial'])
                 schedule_partial[aircraft][check] = partial_schedule_aircraft
         return schedule_partial
+
+    def get_schedule_stats(self, assignment, context):
+
+        schedule_partial = OrderedDict()
+
+        for aircraft in assignment.keys():
+            schedule_partial[aircraft] = {}
+            accumulated, waste = self.get_aircraft_stats(aircraft,
+                                                         assignment,
+                                                         context,
+                                                         check_type='a-type')
+            schedule_partial[aircraft]['A_Initial']['last_due_date'] = context[
+                aircraft]['A_Initial']['last_due_date']
+            schedule_partial[aircraft]['A_Initial']['due_date'] = context[
+                aircraft]['A_Initial']['due_date']
+            schedule_partial[aircraft]['A_Initial'][
+                'assigned_date'] = assignment[aircraft]
+            schedule_partial[aircraft]['A_Initial']['DY'] = accumulated[0]
+            schedule_partial[aircraft]['A_Initial']['FH'] = accumulated[1]
+            schedule_partial[aircraft]['A_Initial']['FC'] = accumulated[2]
+            schedule_partial[aircraft]['A_Initial']['DY LOST'] = waste[0]
+            schedule_partial[aircraft]['A_Initial']['FH LOST'] = waste[1]
+            schedule_partial[aircraft]['A_Initial']['FC LOST'] = waste[2]
+
+        return schedule_partial
+
+        #waste=[DY, FH,FC]
+
+    def get_aircraft_stats(self,
+                           aircraft,
+                           assignment,
+                           context,
+                           check_type='a-type'):
+
+        maxDY = self.fleet.aircraft_info[aircraft]['A_Initial'][
+            checks['A_Initial']['max-days']]
+        maxFH = self.fleet.aircraft_info[aircraft]['A_Initial'][
+            checks['A_Initial']['max-hours']]
+        maxFC = self.fleet.aircraft_info[aircraft]['A_Initial'][
+            checks['A_Initial']['max-cycles']]
+
+        last_due_date = context[aircraft]['A_Initial']['last_due_date']
+        assigned_date = assignment[aircraft]
+        due_date = last_due_date
+        accumulated = [0, 0, 0]
+        while due_date <= assigned_date:
+            month = due_date.month_name()[0:3]
+            due_date = advance_date(due_date, days=int(+1))
+            accumulated[0] += 1
+            accumulated[1] += self.fleet.aircraft_info[aircraft]['DFH'][month]
+            accumulated[2] += self.fleet.aircraft_info[aircraft]['DFC'][month]
+
+        waste[0] = maxDY - accumulated[0]
+        waste[1] = maxFH - accumulated[1]
+        waste[2] = maxFC - accumulated[2]
+        return accumulated, waste
 
     def fill_in_calendar(self,
                          calendar,

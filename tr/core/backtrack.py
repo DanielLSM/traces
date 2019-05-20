@@ -33,9 +33,6 @@ class BacktrackTreelib:
             ipdb.set_trace()
             return None
 
-        # import ipdb
-        # ipdb.set_trace()
-
         cutoff = False
         # here when we expand the childs, we need to fix domain
         for child in node_schedule.expand_with_heuristic(
@@ -45,9 +42,6 @@ class BacktrackTreelib:
                 print("BACKTRACKKKKKKKK")
 
             self.tree.add_node(child, node_schedule)
-            # if self.tree.depth() == 39:
-            #     import ipdb
-            #     ipdb.set_trace()
             print("Depth:{}".format(self.tree.depth()))
 
             next_node = self.solve(child, limit - 1)
@@ -67,12 +61,12 @@ class BacktrackTreelib:
 def solve_csp_schedule(assignment_start):
     csp_problem = CSPSchedule(assignment_start.vars)
     backtrack = BacktrackTreelib(csp_problem, assignment_start)
-    import ipdb
-    ipdb.set_trace()
+    # import ipdb
+    # ipdb.set_trace()
     root = backtrack.tree.get_node(backtrack.tree.root)
     result = backtrack.solve(root)
-    ipdb.set_trace()
-    return result
+    # ipdb.set_trace()
+    return result.assignment, backtrack.tree
 
 
 if __name__ == "__main__":
