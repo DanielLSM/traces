@@ -261,7 +261,7 @@ class FleetManagerBase:
 if __name__ == '__main__':
     import time
     time0 = time.time()
-    from tr.core.parser import excel_to_book
+    from tr.core.parsers import excel_to_book
     try:
         book = excel_to_book(f1_in)
     except Exception as e:

@@ -29,9 +29,9 @@ class SchedulerEDF(FleetManagerBase):
     def __init__(self, *args, **kwargs):
         FleetManagerBase.__init__(self, **kwargs)
         context = self._compute_inital_context()
-        schedule_partial = self.generate_schedules_heuristic(context)
+        # schedule_partial = self.generate_schedules_heuristic(context)
         global_schedule = OrderedDict()
-        for aircraft in schedule_partial.keys():
+        for aircraft in context.keys():
             global_schedule[aircraft] = {}
             global_schedule[aircraft]['due_dates'] = []
             global_schedule[aircraft]['DY'] = []
@@ -42,11 +42,12 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['FC LOST'] = []
 
         while not self.is_context_done(context):
+            import ipdb
+            ipdb.set_trace()
+
             csp_vars = self.cspify(context)
             schedule_partial = solve_csp_schedule(csp_vars)
 
-            import ipdb
-            ipdb.set_trace()
             # schedule_partial = self.generate_schedules_heuristic(context)
             # here we will call backtrack
 
@@ -129,14 +130,25 @@ class SchedulerEDF(FleetManagerBase):
         for key in sorted_dict:
             start_date = sorted_dict[key]['A_Initial']['last_due_date']
             end_date = sorted_dict[key]['A_Initial']['due_date']
+            # if key == 'A320-CS-TTQ':
+            #     import ipdb
+            #     ipdb.set_trace()
+
             domain = self.get_domain(start_date, end_date, key=key)
+            # if key == 'A320-CS-TTQ':
+            #     import ipdb
+            #     ipdb.set_trace()
             var = Variable(name=key, domain=domain)
             ordered_vars.append(var)
 
         assignment = Assignment(ordered_vars)
         return assignment
 
-    def get_max_slots(self, due_date):
+    def get_max_slots(self, due_date, key=None):
+        # if key == 'A319-CS-TTQ':
+        #     print(due_date)
+        #     import ipdb
+        #     ipdb.set_trace()
         check_types = ['a-type', 'c-type']
         slots = [
             self.calendar.calendar[due_date]['resources']['slots'][check]
@@ -153,7 +165,7 @@ class SchedulerEDF(FleetManagerBase):
             if self.calendar.calendar[due_date]['allowed'][
                     'public holidays'] and self.calendar.calendar[due_date][
                         'allowed']['a-type']:
-                for _ in range(self.get_max_slots(due_date)):
+                for _ in range(self.get_max_slots(due_date, key)):
                     domain.append(due_date)
             due_date = advance_date(due_date, days=int(1))
         return domain

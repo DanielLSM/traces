@@ -42,7 +42,7 @@ class BacktrackTreelib:
                 self.csp, node_schedule, next_var):
             self.tree[node_schedule.identifier].count += 1
             if self.tree[node_schedule.identifier].count > 1:
-                print("BACKTRACK")
+                print("BACKTRACKKKKKKKK")
 
             self.tree.add_node(child, node_schedule)
             # if self.tree.depth() == 39:

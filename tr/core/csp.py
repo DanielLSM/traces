@@ -154,8 +154,8 @@ class CSPSchedule:
         return schedule_assign.unassigned_vars[-1]
 
     def value_ordering_heuristic(self, schedule_assign, var):
-        return schedule_assign.vars_domain[var]  #schedule by early date
-        # return schedule_assign.vars_domain[var][::-1] #schedule by due date
+        # return schedule_assign.vars_domain[var]  #schedule by early date
+        return schedule_assign.vars_domain[var][::-1]  #schedule by due date
 
     def select_next_var(self, schedule_assign):
         return self.variable_ordering_heuristic(schedule_assign)
