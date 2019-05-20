@@ -17,20 +17,13 @@ class BacktrackTreelib:
 
     def solve(self, node_schedule, limit=100):
         if self.csp.satisfied_assignment(node_schedule.assignment):
-            import ipdb
-            ipdb.set_trace()
             return node_schedule
 
         if limit == 0:
-            import ipdb
-            ipdb.set_trace()
-
             return "cutoff"
 
         next_var = self.csp.select_next_var(node_schedule.assignment)
         if next_var == None:
-            import ipdb
-            ipdb.set_trace()
             return None
 
         cutoff = False
@@ -42,19 +35,14 @@ class BacktrackTreelib:
                 print("BACKTRACKKKKKKKK")
 
             self.tree.add_node(child, node_schedule)
-            print("Depth:{}".format(self.tree.depth()))
+            # print("Depth:{}".format(self.tree.depth()))
 
             next_node = self.solve(child, limit - 1)
             if next_node == "cutoff":
                 cutoff = True
             elif next_node != None:
                 return next_node
-        # import ipdb
-        # ipdb.set_trace()
         return "cutoff" if cutoff else None
-
-        # import ipdb
-        # ipdb.set_trace()
 
 
 #TODO you should be able to start from an assignment or a tree

@@ -9,6 +9,7 @@ from tr.core.utils import advance_date, dates_between
 from tr.core.csp import Variable, Assignment, Schedule
 from tr.core.backtrack import solve_csp_schedule
 
+import time
 import pulp as plp
 
 checks = {
@@ -43,20 +44,25 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['FH LOST'] = []
             global_schedule[aircraft]['FC LOST'] = []
 
+        time0 = time.time()
+        last_due_date = self.start_date
         while not self.is_context_done(context):
-            import ipdb
-            ipdb.set_trace()
-
-            csp_vars = self.cspify(context)
+            csp_vars = self.cspify(context, last_due_date)
             assignment, tree = solve_csp_schedule(csp_vars)
-            schedule_partial = self.get_schedule_stats(assignment, context)
+            assignment_dict = assignment.assignment
+            last_due_date = assignment_dict[list(assignment_dict.keys())[0]]
+            print("INFO: planned until {}".format(last_due_date))
+            print("INFO: Elapsed time (minutes): {}".format(
+                (time.time() - time0) / 60))
+            schedule_partial = self.get_schedule_stats(assignment_dict,
+                                                       context)
 
             for aircraft in self.fleet.aircraft_info.keys():
 
                 global_schedule[aircraft]['last_due_dates'].append(
                     schedule_partial[aircraft]['A_Initial']['last_due_date'])
                 global_schedule[aircraft]['assigned_dates'].append(
-                    schedule_partial[aircraft]['A_Initial']['due_date'])
+                    schedule_partial[aircraft]['A_Initial']['assigned_date'])
                 global_schedule[aircraft]['due_dates'].append(
                     schedule_partial[aircraft]['A_Initial']['due_date'])
 
@@ -114,7 +120,7 @@ class SchedulerEDF(FleetManagerBase):
         print(df)
         df.to_excel('output.xlsx')
 
-    def cspify(self, context):
+    def cspify(self, context, last_due_date):
         #order vars by due date
         sorted_x = sorted(
             context.items(),
@@ -124,12 +130,8 @@ class SchedulerEDF(FleetManagerBase):
 
         ordered_vars = []
         for key in sorted_dict:
-            start_date = sorted_dict[key]['A_Initial']['last_due_date']
+            start_date = last_due_date
             end_date = sorted_dict[key]['A_Initial']['due_date']
-            # if key == 'A320-CS-TTQ':
-            #     import ipdb
-            #     ipdb.set_trace()
-
             domain = self.get_domain(start_date, end_date, key=key)
             # if key == 'A320-CS-TTQ':
             #     import ipdb
@@ -196,6 +198,7 @@ class SchedulerEDF(FleetManagerBase):
                                                          assignment,
                                                          context,
                                                          check_type='a-type')
+            schedule_partial[aircraft]['A_Initial'] = {}
             schedule_partial[aircraft]['A_Initial']['last_due_date'] = context[
                 aircraft]['A_Initial']['last_due_date']
             schedule_partial[aircraft]['A_Initial']['due_date'] = context[
@@ -230,6 +233,7 @@ class SchedulerEDF(FleetManagerBase):
         assigned_date = assignment[aircraft]
         due_date = last_due_date
         accumulated = [0, 0, 0]
+        waste = [0, 0, 0]
         while due_date <= assigned_date:
             month = due_date.month_name()[0:3]
             due_date = advance_date(due_date, days=int(+1))
@@ -331,7 +335,7 @@ class SchedulerEDF(FleetManagerBase):
                         'waste'], schedule_partial[aircraft][check][
                             'last_due_date'] = self.compute_next_due_date(
                                 schedule_partial[aircraft]['A_Initial']
-                                ['due_date'],
+                                ['assigned_date'],
                                 end_date,
                                 aircraft,
                                 maxDY=maxDY,

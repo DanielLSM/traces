@@ -45,7 +45,7 @@ def book_to_kwargs_MPO(book):
 
     # TODO
     start_date = pd.to_datetime(book['Additional'][2017][1])
-    end_date = advance_date(start_date, years=6)
+    end_date = advance_date(start_date, years=1)
 
     m_type_restriction['start_date'] = start_date
     m_type_restriction['end_date'] = end_date
