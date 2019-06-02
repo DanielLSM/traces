@@ -62,10 +62,23 @@ def book_to_kwargs_MPO(book):
     print("INFO: information from xlsx parsed with success")
     print("#########################")
 
+    aircraft_info = anonymize(aircraft_info)
+
     return {
         'aircraft_info': aircraft_info,
         'restrictions': m_type_restriction,
     }
+
+
+def anonymize(aircraft_info):
+    a_info = OrderedDict()
+    i = 0
+    for _ in aircraft_info.keys():
+        a_info['A-' + str(i)] = aircraft_info[_]
+        i += 1
+    # import ipdb
+    # ipdb.set_trace()
+    return a_info
 
 
 def get_restrictions_MPO(book):
@@ -90,9 +103,12 @@ def get_aircraft_info_MPO(book):
             # create ordered dict to store aircraft info
             for _ in range(len(book[sheet_name]['Aircraft ID'])):
                 a_id = book[sheet_name]['Aircraft ID'][_]
+                # a_id_key = 'A-' + str(_)
                 if a_id not in list(aircraft_info.keys()):
+                    # aircraft_info[a_id_key] = OrderedDict()
                     aircraft_info[a_id] = OrderedDict()
                 if sheet_name not in list(aircraft_info[a_id].keys()):
+                    # aircraft_info[a_id_key][sheet_name] = OrderedDict()
                     aircraft_info[a_id][sheet_name] = OrderedDict()
 
             # fill the info of other columns, pandas already adds idx to equal
@@ -101,6 +117,9 @@ def get_aircraft_info_MPO(book):
                 if column_idx != 'Aircraft ID':
                     for _ in range(len(book[sheet_name]['Aircraft ID'])):
                         a_id = book[sheet_name]['Aircraft ID'][_]
+                        # a_id_key = 'A-' + str(_)
+                        # aircraft_info[a_id_key][sheet_name][column_idx] = book[
+                        #     sheet_name][column_idx][_]
                         aircraft_info[a_id][sheet_name][column_idx] = book[
                             sheet_name][column_idx][_]
 

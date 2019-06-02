@@ -85,6 +85,11 @@ class SchedulerEDF(FleetManagerBase):
             context = self.compute_next_context(schedule_partial,
                                                 self.end_date)
 
+        import pickle
+        pickle_out = open("output.pkl", "wb")
+        pickle.dump(global_schedule, pickle_out)
+        pickle_out.close()
+
         self._save_to_xls(global_schedule)
 
     @staticmethod
