@@ -9,9 +9,9 @@ from tr.core.utils import advance_date, dates_between
 from tr.core.csp import Variable, Assignment, Schedule
 from tr.core.backtrack import solve_csp_schedule
 
+import pulp as plp
 import time
 # from copy import deep
-import pulp as plp
 
 checks = {
     'A_Initial': {
