@@ -14,13 +14,13 @@ import time
 # from copy import deep
 
 checks = {
-    'A_Initial': {
+    'A_INITIAL': {
         'initial-days': 'DY-A',
         'initial-hours': 'FH-A',
         'initial-cycles': 'FC-A',
-        'max-days': 'ACI-DY',
-        'max-hours': 'ACI-FH',
-        'max-cycles': 'ACI-FC'
+        'max-days': 'A-CI-DY',
+        'max-hours': 'A-CI-FH',
+        'max-cycles': 'A-CI-FC'
     }
 }
 
@@ -96,24 +96,24 @@ class SchedulerEDF(FleetManagerBase):
         for aircraft in self.fleet.aircraft_info.keys():
 
             self.global_schedule[aircraft]['last_due_dates'].append(
-                schedule_partial[aircraft]['A_Initial']['last_due_date'])
+                schedule_partial[aircraft]['A_INITIAL']['last_due_date'])
             self.global_schedule[aircraft]['assigned_dates'].append(
-                schedule_partial[aircraft]['A_Initial']['assigned_date'])
+                schedule_partial[aircraft]['A_INITIAL']['assigned_date'])
             self.global_schedule[aircraft]['due_dates'].append(
-                schedule_partial[aircraft]['A_Initial']['due_date'])
+                schedule_partial[aircraft]['A_INITIAL']['due_date'])
 
             self.global_schedule[aircraft]['DY'].append(
-                schedule_partial[aircraft]['A_Initial']['DY'])
+                schedule_partial[aircraft]['A_INITIAL']['DY'])
             self.global_schedule[aircraft]['FH'].append(
-                schedule_partial[aircraft]['A_Initial']['FH'])
+                schedule_partial[aircraft]['A_INITIAL']['FH'])
             self.global_schedule[aircraft]['FC'].append(
-                schedule_partial[aircraft]['A_Initial']['FC'])
+                schedule_partial[aircraft]['A_INITIAL']['FC'])
             self.global_schedule[aircraft]['DY LOST'].append(
-                schedule_partial[aircraft]['A_Initial']['DY LOST'])
+                schedule_partial[aircraft]['A_INITIAL']['DY LOST'])
             self.global_schedule[aircraft]['FH LOST'].append(
-                schedule_partial[aircraft]['A_Initial']['FH LOST'])
+                schedule_partial[aircraft]['A_INITIAL']['FH LOST'])
             self.global_schedule[aircraft]['FC LOST'].append(
-                schedule_partial[aircraft]['A_Initial']['FC LOST'])
+                schedule_partial[aircraft]['A_INITIAL']['FC LOST'])
 
     def plan_maintenance_opportunities(self):
         time0 = time.time()
@@ -151,14 +151,14 @@ class SchedulerEDF(FleetManagerBase):
         #order vars by due date
         sorted_x = sorted(
             context.items(),
-            key=lambda kv: kv[1]['A_Initial']['due_date'].timestamp(),
+            key=lambda kv: kv[1]['A_INITIAL']['due_date'].timestamp(),
             reverse=True)
         sorted_dict = OrderedDict(sorted_x)
 
         ordered_vars = []
         for key in sorted_dict:
-            start_date = sorted_dict[key]['A_Initial']['assigned_date']
-            end_date = sorted_dict[key]['A_Initial']['due_date']
+            start_date = sorted_dict[key]['A_INITIAL']['assigned_date']
+            end_date = sorted_dict[key]['A_INITIAL']['due_date']
             domain = self.get_domain(start_date, end_date, key=key)
             var = Variable(name=key, domain=domain)
             ordered_vars.append(var)
@@ -190,7 +190,7 @@ class SchedulerEDF(FleetManagerBase):
 
     def is_context_done(self, context):
         for aircraft in context.keys():
-            if context[aircraft]['A_Initial']['due_date'] > self.end_date:
+            if context[aircraft]['A_INITIAL']['due_date'] > self.end_date:
                 return True
         return False
 
@@ -204,19 +204,19 @@ class SchedulerEDF(FleetManagerBase):
                                                          assignment,
                                                          context,
                                                          check_type='a-type')
-            schedule_partial[aircraft]['A_Initial'] = {}
-            schedule_partial[aircraft]['A_Initial']['last_due_date'] = context[
-                aircraft]['A_Initial']['last_due_date']
-            schedule_partial[aircraft]['A_Initial']['due_date'] = context[
-                aircraft]['A_Initial']['due_date']
-            schedule_partial[aircraft]['A_Initial'][
+            schedule_partial[aircraft]['A_INITIAL'] = {}
+            schedule_partial[aircraft]['A_INITIAL']['last_due_date'] = context[
+                aircraft]['A_INITIAL']['last_due_date']
+            schedule_partial[aircraft]['A_INITIAL']['due_date'] = context[
+                aircraft]['A_INITIAL']['due_date']
+            schedule_partial[aircraft]['A_INITIAL'][
                 'assigned_date'] = assignment[aircraft]
-            schedule_partial[aircraft]['A_Initial']['DY'] = accumulated[0]
-            schedule_partial[aircraft]['A_Initial']['FH'] = accumulated[1]
-            schedule_partial[aircraft]['A_Initial']['FC'] = accumulated[2]
-            schedule_partial[aircraft]['A_Initial']['DY LOST'] = waste[0]
-            schedule_partial[aircraft]['A_Initial']['FH LOST'] = waste[1]
-            schedule_partial[aircraft]['A_Initial']['FC LOST'] = waste[2]
+            schedule_partial[aircraft]['A_INITIAL']['DY'] = accumulated[0]
+            schedule_partial[aircraft]['A_INITIAL']['FH'] = accumulated[1]
+            schedule_partial[aircraft]['A_INITIAL']['FC'] = accumulated[2]
+            schedule_partial[aircraft]['A_INITIAL']['DY LOST'] = waste[0]
+            schedule_partial[aircraft]['A_INITIAL']['FH LOST'] = waste[1]
+            schedule_partial[aircraft]['A_INITIAL']['FC LOST'] = waste[2]
 
         return schedule_partial
 
@@ -226,20 +226,20 @@ class SchedulerEDF(FleetManagerBase):
                            context,
                            check_type='a-type'):
 
-        maxDY = self.fleet.aircraft_info[aircraft]['A_Initial'][
-            checks['A_Initial']['max-days']]
-        maxFH = self.fleet.aircraft_info[aircraft]['A_Initial'][
-            checks['A_Initial']['max-hours']]
-        maxFC = self.fleet.aircraft_info[aircraft]['A_Initial'][
-            checks['A_Initial']['max-cycles']]
+        maxDY = self.fleet.aircraft_info[aircraft]['A_INITIAL'][
+            checks['A_INITIAL']['max-days']]
+        maxFH = self.fleet.aircraft_info[aircraft]['A_INITIAL'][
+            checks['A_INITIAL']['max-hours']]
+        maxFC = self.fleet.aircraft_info[aircraft]['A_INITIAL'][
+            checks['A_INITIAL']['max-cycles']]
 
-        waste_due_date = context[aircraft]['A_Initial']['waste']
+        waste_due_date = context[aircraft]['A_INITIAL']['waste']
         assigned_date = assignment[aircraft]
-        due_date = context[aircraft]['A_Initial']['due_date']
+        due_date = context[aircraft]['A_INITIAL']['due_date']
         accumulated = [0, 0, 0]
         # waste = [0, 0, 0]
         while due_date >= assigned_date:
-            month = due_date.month_name()[0:3]
+            month = (due_date.month_name()[0:3]).upper()
             due_date = advance_date(due_date, days=int(-1))
             waste_due_date[0] += 1
             waste_due_date[1] += self.fleet.aircraft_info[aircraft]['DFH'][
@@ -323,7 +323,7 @@ class SchedulerEDF(FleetManagerBase):
     def compute_next_context(self,
                              schedule_partial,
                              end_date,
-                             check_type='A_Initial'):
+                             check_type='A_INITIAL'):
         """ Given start_due_dates for all the fleet, and an end_date, assign a schedule
         this is similar to solving a MILP  """
         for check in checks.keys():
@@ -338,7 +338,7 @@ class SchedulerEDF(FleetManagerBase):
                     'due_date'], schedule_partial[aircraft][check][
                         'waste'], schedule_partial[aircraft][check][
                             'last_due_date'] = self.compute_next_due_date(
-                                schedule_partial[aircraft]['A_Initial']
+                                schedule_partial[aircraft]['A_INITIAL']
                                 ['assigned_date'],
                                 end_date,
                                 aircraft,
@@ -360,13 +360,13 @@ class SchedulerEDF(FleetManagerBase):
         DY, FH, FC = DY_i, FH_i, FC_i
 
         due_date = start_date
-        month = start_date.month_name()[0:3]
+        month = (start_date.month_name()[0:3]).upper()
         maxDY_proxy = maxDY - 1
         maxFH_proxy = maxFH - self.fleet.aircraft_info[aircraft]['DFH'][month]
         maxFC_proxy = maxFC - self.fleet.aircraft_info[aircraft]['DFC'][month]
 
         while DY < maxDY_proxy and FH < maxFH_proxy and FC < maxFC_proxy:
-            month = due_date.month_name()[0:3]
+            month = (due_date.month_name()[0:3]).upper()
             DY += 1
             FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
             FC += self.fleet.aircraft_info[aircraft]['DFC'][month]

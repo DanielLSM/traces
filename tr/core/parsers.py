@@ -2,7 +2,7 @@ import pandas as pd
 import random
 import datetime
 
-from tr.core.resources import f1_in, f2_out
+from tr.core.resources import f1_in, f2_out, f1_in_tasks
 from tr.core.utils import dict_to_list, diff_time_list, get_slots
 from tr.core.utils import advance_date
 
@@ -12,18 +12,20 @@ from collections import OrderedDict, defaultdict
 
 
 def excel_to_book(file_input: str):
+    print("INFO: parsing xlsx to runtime book")
     try:
         book = pd.read_excel(file_input,
                              sheet_name=None)  # returns an ordered dict
     except Exception as e:
         print(e)
         print('Error parsing the excel file into a dict book buddy!')
+    print("INFO: xlsx to runtime book completed")
     return book
 
 
 def book_to_kwargs_MPO(book):
     print("#########################")
-    print("INFO: building from xlsx")
+    print("INFO: processing from runtime book")
     """ given an MPO input, compute dict where keys are aircraft ids and the rest 
     of sheet info is organized by aircraft id """
     aircraft_info = get_aircraft_info_MPO(book)
@@ -55,7 +57,7 @@ def book_to_kwargs_MPO(book):
 
     # # all these restrictions will restrict the general calendar
     # # for
-    print("INFO: information from xlsx parsed with success")
+    print("INFO: information from runtime parsed with success")
     print("#########################")
 
     return {
@@ -104,6 +106,21 @@ def get_aircraft_info_MPO(book):
     return aircraft_info
 
 
+def book_to_kwargs_tasks(book):
+    print("#########################")
+    print("INFO: processing from runtime book")
+    """ given an MPO input, compute dict where keys are aircraft ids and the rest 
+    of sheet info is organized by aircraft id """
+    aircraft_tasks = OrderedDict()
+
+    print("INFO: information from runtime parsed with success")
+    print("#########################")
+
+    return {
+        'aircraft_tasks': aircraft_tasks,
+    }
+
+
 if __name__ == '__main__':
     try:
         f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
@@ -112,5 +129,8 @@ if __name__ == '__main__':
         raise e
 
     kwargs = book_to_kwargs_MPO(book)
-    import ipdb
-    ipdb.set_trace()
+    try:
+        book = excel_to_book(f1_in_tasks)
+    except Exception as e:
+        raise e
+    kwargs_tasks = book_to_kwargs_tasks(book)

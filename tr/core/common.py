@@ -126,12 +126,12 @@ class Fleet:
         return due_dates
 
     def compute_due_date_type_a(self, start_date, end_date, aircraft):
-        DY_i = self.aircraft_info[aircraft]['A_Initial']['DY-A']
-        FH_i = self.aircraft_info[aircraft]['A_Initial']['FH-A']
-        FC_i = self.aircraft_info[aircraft]['A_Initial']['FC-A']
-        maxDY = self.aircraft_info[aircraft]['A_Initial']['ACI-DY']
-        maxFH = self.aircraft_info[aircraft]['A_Initial']['ACI-FH']
-        maxFC = self.aircraft_info[aircraft]['A_Initial']['ACI-FC']
+        DY_i = self.aircraft_info[aircraft]['A_INITIAL']['DY-A']
+        FH_i = self.aircraft_info[aircraft]['A_INITIAL']['FH-A']
+        FC_i = self.aircraft_info[aircraft]['A_INITIAL']['FC-A']
+        maxDY = self.aircraft_info[aircraft]['A_INITIAL']['ACI-DY']
+        maxFH = self.aircraft_info[aircraft]['A_INITIAL']['ACI-FH']
+        maxFC = self.aircraft_info[aircraft]['A_INITIAL']['ACI-FC']
         due_date = self.compute_next_due_date(aircraft,
                                               start_date,
                                               DY_i=DY_i,
@@ -190,12 +190,12 @@ class Fleet:
     def compute_due_dates_type_a(self, start_date, end_date, aircraft):
         due_dates = []
         last_due_date = start_date
-        DY_i = self.aircraft_info[aircraft]['A_Initial']['DY-A']
-        FH_i = self.aircraft_info[aircraft]['A_Initial']['FH-A']
-        FC_i = self.aircraft_info[aircraft]['A_Initial']['FC-A']
-        maxDY = self.aircraft_info[aircraft]['A_Initial']['ACI-DY']
-        maxFH = self.aircraft_info[aircraft]['A_Initial']['ACI-FH']
-        maxFC = self.aircraft_info[aircraft]['A_Initial']['ACI-FC']
+        DY_i = self.aircraft_info[aircraft]['A_INITIAL']['DY-A']
+        FH_i = self.aircraft_info[aircraft]['A_INITIAL']['FH-A']
+        FC_i = self.aircraft_info[aircraft]['A_INITIAL']['FC-A']
+        maxDY = self.aircraft_info[aircraft]['A_INITIAL']['ACI-DY']
+        maxFH = self.aircraft_info[aircraft]['A_INITIAL']['ACI-FH']
+        maxFC = self.aircraft_info[aircraft]['A_INITIAL']['ACI-FC']
         due_date = self.compute_next_due_date(aircraft,
                                               last_due_date,
                                               DY_i=DY_i,
