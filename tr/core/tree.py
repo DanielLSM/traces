@@ -16,7 +16,9 @@ class NodeSchedule(treelib.Node):
         if tag == None:
             tag = "{}={}".format(action_var, action_value)
         if identifier == None:
+            # identifier = "{}={}_from_{}".format(action_var, action_value, pai)
             identifier = "{}={}_from_{}".format(action_var, action_value, pai)
+
         # print("Creating Node {}".format(tag))
         super().__init__(tag=tag, identifier=identifier, *args, **kwargs)
         self.assignment = assignment  #state of the world
@@ -44,6 +46,7 @@ class NodeSchedule(treelib.Node):
                 childs.append(child)
             elif child != None and child.tag != childs[-1].tag:
                 childs.append(child)
+
         # aux = [child.tag for child in childs]
         # import ipdb
         # ipdb.set_trace()

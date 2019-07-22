@@ -30,8 +30,17 @@ class SchedulerEDF(FleetManagerBase):
 
     def __init__(self, *args, **kwargs):
         FleetManagerBase.__init__(self, **kwargs)
-        context = self._compute_inital_context()
-        # schedule_partial = self.generate_schedules_heuristic(context)
+        self.full_tree = []
+        self.initial_context = self._compute_inital_context()
+        self.global_schedule = self._set_global_schedule(self.initial_context)
+
+        self.plan_maintenance_opportunities(self.initial_context)
+        self.plan_tasks()
+
+        self._save_to_xls(self.global_schedule)
+
+    @staticmethod
+    def _set_global_schedule(context):
         global_schedule = OrderedDict()
         for aircraft in context.keys():
             global_schedule[aircraft] = {}
@@ -44,48 +53,7 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['DY LOST'] = []
             global_schedule[aircraft]['FH LOST'] = []
             global_schedule[aircraft]['FC LOST'] = []
-
-        # calendar = deep
-        time0 = time.time()
-        # last_due_date = self.start_date
-        while not self.is_context_done(context):
-
-            csp_vars = self.cspify(context)
-            assignment, tree = solve_csp_schedule(csp_vars)
-            assignment_dict = assignment.assignment
-            self.restrict_calendar(assignment_dict)
-            last_due_date = assignment_dict[list(assignment_dict.keys())[0]]
-            print("INFO: planned until {}".format(last_due_date))
-            print("INFO: Elapsed time (minutes): {}".format(
-                (time.time() - time0) / 60))
-            schedule_partial = self.get_schedule_stats(assignment_dict,
-                                                       context)
-
-            for aircraft in self.fleet.aircraft_info.keys():
-
-                global_schedule[aircraft]['last_due_dates'].append(
-                    schedule_partial[aircraft]['A_Initial']['last_due_date'])
-                global_schedule[aircraft]['assigned_dates'].append(
-                    schedule_partial[aircraft]['A_Initial']['assigned_date'])
-                global_schedule[aircraft]['due_dates'].append(
-                    schedule_partial[aircraft]['A_Initial']['due_date'])
-
-                global_schedule[aircraft]['DY'].append(
-                    schedule_partial[aircraft]['A_Initial']['DY'])
-                global_schedule[aircraft]['FH'].append(
-                    schedule_partial[aircraft]['A_Initial']['FH'])
-                global_schedule[aircraft]['FC'].append(
-                    schedule_partial[aircraft]['A_Initial']['FC'])
-                global_schedule[aircraft]['DY LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['DY LOST'])
-                global_schedule[aircraft]['FH LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['FH LOST'])
-                global_schedule[aircraft]['FC LOST'].append(
-                    schedule_partial[aircraft]['A_Initial']['FC LOST'])
-            context = self.compute_next_context(schedule_partial,
-                                                self.end_date)
-
-        self._save_to_xls(global_schedule)
+        return global_schedule
 
     @staticmethod
     def _save_to_xls(global_schedule):
@@ -123,6 +91,54 @@ class SchedulerEDF(FleetManagerBase):
 
         print(df)
         df.to_excel('output.xlsx')
+
+    def _add_to_global_schedule(self, schedule_partial):
+        for aircraft in self.fleet.aircraft_info.keys():
+
+            self.global_schedule[aircraft]['last_due_dates'].append(
+                schedule_partial[aircraft]['A_Initial']['last_due_date'])
+            self.global_schedule[aircraft]['assigned_dates'].append(
+                schedule_partial[aircraft]['A_Initial']['assigned_date'])
+            self.global_schedule[aircraft]['due_dates'].append(
+                schedule_partial[aircraft]['A_Initial']['due_date'])
+
+            self.global_schedule[aircraft]['DY'].append(
+                schedule_partial[aircraft]['A_Initial']['DY'])
+            self.global_schedule[aircraft]['FH'].append(
+                schedule_partial[aircraft]['A_Initial']['FH'])
+            self.global_schedule[aircraft]['FC'].append(
+                schedule_partial[aircraft]['A_Initial']['FC'])
+            self.global_schedule[aircraft]['DY LOST'].append(
+                schedule_partial[aircraft]['A_Initial']['DY LOST'])
+            self.global_schedule[aircraft]['FH LOST'].append(
+                schedule_partial[aircraft]['A_Initial']['FH LOST'])
+            self.global_schedule[aircraft]['FC LOST'].append(
+                schedule_partial[aircraft]['A_Initial']['FC LOST'])
+
+    def plan_maintenance_opportunities(self, context):
+        time0 = time.time()
+
+        while not self.is_context_done(context):
+
+            csp_vars = self.cspify(context)
+            assignment, tree = solve_csp_schedule(csp_vars)
+            self.full_tree.append(tree)
+            assignment_dict = assignment.assignment
+            self.restrict_calendar(assignment_dict)
+
+            last_due_date = assignment_dict[list(assignment_dict.keys())[0]]
+            print("INFO: planned until {}".format(last_due_date))
+            print("INFO: Elapsed time (minutes): {}".format(
+                (time.time() - time0) / 60))
+            schedule_partial = self.get_schedule_stats(assignment_dict,
+                                                       context)
+
+            self._add_to_global_schedule(schedule_partial)
+            context = self.compute_next_context(schedule_partial,
+                                                self.end_date)
+
+    def plan_tasks():
+        pass
 
     def restrict_calendar(self, assignment):
         check_types = ['a-type', 'c-type']

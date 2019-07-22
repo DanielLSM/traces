@@ -35,7 +35,7 @@ class BacktrackTreelib:
                 print("BACKTRACKKKKKKKK")
 
             self.tree.add_node(child, node_schedule)
-            # print("Depth:{}".format(self.tree.depth()))
+            # print("Depth:{}".format(self.tree.depth()))3
 
             next_node = self.solve(child, limit - 1)
             if next_node == "cutoff":
