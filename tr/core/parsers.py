@@ -34,12 +34,12 @@ def book_to_kwargs_MPO(book):
     m_type_restriction = {}
     m_type_restriction = {'time_type': 'day'}
 
-    a_time = dict_to_list(calendar_restrictions['A_Not_Allowed']['Dates'])
-    c_time = diff_time_list(calendar_restrictions['C_Not_Allowed'])
-    all_time = dict_to_list(calendar_restrictions['Public_Holidays']['Dates'])
+    a_time = dict_to_list(calendar_restrictions['A_NOT_ALLOWED']['DATE'])
+    c_time = diff_time_list(calendar_restrictions['C_NOT_ALLOWED'])
+    all_time = dict_to_list(calendar_restrictions['PUBLIC_HOLIDAYS']['DATE'])
 
-    a_resources = {'slots': get_slots(calendar_restrictions['More_A_Slots'])}
-    c_resources = {'slots': get_slots(calendar_restrictions['More_C_Slots'])}
+    a_resources = {'slots': get_slots(calendar_restrictions['MORE_A_SLOTS'])}
+    c_resources = {'slots': get_slots(calendar_restrictions['MORE_C_SLOTS'])}
 
     m_type_restriction['a-type'] = {'time': a_time, 'resources': a_resources}
     m_type_restriction['c-type'] = {'time': c_time, 'resources': c_resources}
@@ -47,12 +47,8 @@ def book_to_kwargs_MPO(book):
 
     # TODO
     end = datetime.datetime(2022, 2, 1, 0, 0)
-    start_date = pd.to_datetime(book['Additional'][2017][1])
+    start_date = pd.to_datetime(book['ADDITIONAL'][2019][1])
     end_date = pd.to_datetime(end)
-
-    # import ipdb
-    # ipdb.set_trace()
-    # end_date = advance_date(start_date, years=1)
 
     m_type_restriction['start_date'] = start_date
     m_type_restriction['end_date'] = end_date
@@ -73,7 +69,7 @@ def get_restrictions_MPO(book):
     print('INFO: gathering restrictions info')
     restrictions_info = OrderedDict()
     for sheet_name in book.keys():
-        if 'Aircraft ID' not in book[sheet_name].keys():
+        if 'A/C TAIL' not in book[sheet_name].keys():
             for column_idx in book[sheet_name].keys():
                 restrictions_info[sheet_name] = book[sheet_name].to_dict()
 
@@ -86,10 +82,10 @@ def get_aircraft_info_MPO(book):
 
     aircraft_info = OrderedDict()
     for sheet_name in book.keys():
-        if 'Aircraft ID' in book[sheet_name].keys():
+        if 'A/C TAIL' in book[sheet_name].keys():
             # create ordered dict to store aircraft info
-            for _ in range(len(book[sheet_name]['Aircraft ID'])):
-                a_id = book[sheet_name]['Aircraft ID'][_]
+            for _ in range(len(book[sheet_name]['A/C TAIL'])):
+                a_id = book[sheet_name]['A/C TAIL'][_]
                 if a_id not in list(aircraft_info.keys()):
                     aircraft_info[a_id] = OrderedDict()
                 if sheet_name not in list(aircraft_info[a_id].keys()):
@@ -98,9 +94,9 @@ def get_aircraft_info_MPO(book):
             # fill the info of other columns, pandas already adds idx to equal
             # value columns
             for column_idx in book[sheet_name].keys():
-                if column_idx != 'Aircraft ID':
-                    for _ in range(len(book[sheet_name]['Aircraft ID'])):
-                        a_id = book[sheet_name]['Aircraft ID'][_]
+                if column_idx != 'A/C TAIL':
+                    for _ in range(len(book[sheet_name]['A/C TAIL'])):
+                        a_id = book[sheet_name]['A/C TAIL'][_]
                         aircraft_info[a_id][sheet_name][column_idx] = book[
                             sheet_name][column_idx][_]
 
@@ -110,8 +106,11 @@ def get_aircraft_info_MPO(book):
 
 if __name__ == '__main__':
     try:
+        f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
         book = excel_to_book(f1_in)
     except Exception as e:
         raise e
 
     kwargs = book_to_kwargs_MPO(book)
+    import ipdb
+    ipdb.set_trace()

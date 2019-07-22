@@ -31,31 +31,31 @@ def dict_to_list(pandas_dict):
 def diff_time_list(sheet, type='days'):
     # in the future we would like to...... use types different than days
     sheet_keys = list(sheet.keys())
-    assert 'Begin' in sheet_keys and 'End' in sheet_keys, "begin or end undefined"
+    assert 'BEGIN' in sheet_keys and 'END' in sheet_keys, "begin or end undefined"
     time_list = []
-    for _ in sheet['Begin'].keys():
-        delta = sheet['End'][_] - sheet['Begin'][_]
+    for _ in sheet['BEGIN'].keys():
+        delta = sheet['END'][_] - sheet['BEGIN'][_]
         time_list.extend([
-            sheet['Begin'][_] + timedelta(days=i)
+            sheet['BEGIN'][_] + timedelta(days=i)
             for i in range(delta.days + 1)
         ])
     return time_list
 
 
 def get_slots(sheet):
-    assert 'Slots' in sheet.keys(), "slots are not in sheet keys"
-    if 'Date' in sheet.keys():
+    assert 'SLOTS' in sheet.keys(), "slots are not in sheet keys"
+    if 'DATE' in sheet.keys():
         slots = {
-            sheet['Date'][_]: sheet['Slots'][_]
-            for _ in range(list(sheet['Slots'].keys())[-1] + 1)
+            sheet['DATE'][_]: sheet['SLOTS'][_]
+            for _ in range(list(sheet['SLOTS'].keys())[-1] + 1)
         }
-        assert len(list(slots.keys())) == len(list(sheet['Slots'].keys()))
-    elif 'Begin' in sheet.keys():
+        assert len(list(slots.keys())) == len(list(sheet['SLOTS'].keys()))
+    elif 'BEGIN' in sheet.keys():
         slots = {}
-        for _ in sheet['Begin'].keys():
-            delta = sheet['End'][_] - sheet['Begin'][_]
+        for _ in sheet['BEGIN'].keys():
+            delta = sheet['END'][_] - sheet['BEGIN'][_]
             slots_per_entry = {
-                sheet['Begin'][_] + timedelta(days=i): sheet['Slots'][_]
+                sheet['BEGIN'][_] + timedelta(days=i): sheet['SLOTS'][_]
                 for i in range(delta.days + 1)
             }
             slots.update(slots_per_entry)

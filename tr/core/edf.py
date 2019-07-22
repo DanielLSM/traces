@@ -34,7 +34,7 @@ class SchedulerEDF(FleetManagerBase):
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
 
-        self.plan_maintenance_opportunities(self.initial_context)
+        self.plan_maintenance_opportunities()
         self.plan_tasks()
 
         self._save_to_xls(self.global_schedule)
@@ -115,9 +115,9 @@ class SchedulerEDF(FleetManagerBase):
             self.global_schedule[aircraft]['FC LOST'].append(
                 schedule_partial[aircraft]['A_Initial']['FC LOST'])
 
-    def plan_maintenance_opportunities(self, context):
+    def plan_maintenance_opportunities(self):
         time0 = time.time()
-
+        context = self.initial_context
         while not self.is_context_done(context):
 
             csp_vars = self.cspify(context)
@@ -137,7 +137,7 @@ class SchedulerEDF(FleetManagerBase):
             context = self.compute_next_context(schedule_partial,
                                                 self.end_date)
 
-    def plan_tasks():
+    def plan_tasks(self):
         pass
 
     def restrict_calendar(self, assignment):
@@ -382,6 +382,7 @@ if __name__ == '__main__':
 
     import time
     t = time.time()
+    f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
     book = excel_to_book(f1_in)
     kwargs = book_to_kwargs_MPO(book)
     scheduler = SchedulerEDF(**kwargs)
