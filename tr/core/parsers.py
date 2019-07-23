@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import datetime
+from tqdm import tqdm
 
 from tr.core.resources import f1_in, f2_out, f1_in_tasks
 from tr.core.utils import dict_to_list, diff_time_list, get_slots
@@ -106,12 +107,27 @@ def get_aircraft_info_MPO(book):
     return aircraft_info
 
 
-def book_to_kwargs_tasks(book):
+def book_to_kwargs_tasks(book, aircrafts):
     print("#########################")
     print("INFO: processing from runtime book")
     """ given an MPO input, compute dict where keys are aircraft ids and the rest 
     of sheet info is organized by aircraft id """
     aircraft_tasks = OrderedDict()
+    for _ in aircrafts:
+        aircraft_tasks[_] = OrderedDict()
+
+    sheet_name = 'TASK_LIST'
+    total = len(book[sheet_name]['A/C'])
+    if 'A/C' in book[sheet_name].keys():
+        for line_idx in tqdm(range(len(book[sheet_name]['A/C']))):
+            for column_idx in book[sheet_name].keys():
+                if column_idx != 'A/C' and column_idx != 'ITEM':
+                    aircraft = book[sheet_name]['A/C'][line_idx]
+                    item = book[sheet_name]['ITEM'][line_idx]
+                    if item not in list(aircraft_tasks[aircraft].keys()):
+                        aircraft_tasks[aircraft][item] = OrderedDict()
+                    value = book[sheet_name][column_idx][line_idx]
+                    aircraft_tasks[aircraft][item] = {column_idx: value}
 
     print("INFO: information from runtime parsed with success")
     print("#########################")
@@ -129,8 +145,11 @@ if __name__ == '__main__':
         raise e
 
     kwargs = book_to_kwargs_MPO(book)
+    aircrafts = kwargs['aircraft_info'].keys()
     try:
         book = excel_to_book(f1_in_tasks)
     except Exception as e:
         raise e
-    kwargs_tasks = book_to_kwargs_tasks(book)
+    kwargs_tasks = book_to_kwargs_tasks(book, aircrafts)
+    import ipdb
+    ipdb.set_trace()
