@@ -26,7 +26,7 @@ def excel_to_book(file_input: str):
 
 def book_to_kwargs_MPO(book):
     print("#########################")
-    print("INFO: processing from runtime book")
+    print("INFO: processing from runtime checks book")
     """ given an MPO input, compute dict where keys are aircraft ids and the rest 
     of sheet info is organized by aircraft id """
     aircraft_info = get_aircraft_info_MPO(book)
@@ -107,18 +107,14 @@ def get_aircraft_info_MPO(book):
     return aircraft_info
 
 
-def book_to_kwargs_tasks(book, aircrafts):
+def book_to_kwargs_tasks(book):
     print("#########################")
-    print("INFO: processing from runtime book")
+    print("INFO: processing from runtime tasks book")
     """ given an MPO input, compute dict where keys are aircraft ids and the rest 
     of sheet info is organized by aircraft id """
-    aircraft_tasks = OrderedDict()
-    for _ in aircrafts:
-        aircraft_tasks[_] = OrderedDict()
 
     sheet_name = 'TASK_LIST'
     df = book[sheet_name]
-    import ipdb
 
     def process_df(df):
         for _ in df.keys():
@@ -127,22 +123,23 @@ def book_to_kwargs_tasks(book, aircrafts):
         df['PER FC'].fillna(False, inplace=True)
         df['PER CALEND'].fillna(False, inplace=True)
         df['TASK BY BLOCK'].fillna("OTHER", inplace=True)
+        # do not use things without due dates
+        df = df[(df['PER FH'] != False) | (df['PER FC'] != False) |
+                (df['PER CALEND'] != False)]
+        df = df.reset_index(drop=True)
         return df
 
     df = process_df(df)
-    # df = df[df['TASK BY BLOCK'] != 'LINE MAINTENANCE']
-    # a_checks = df[(df['TASK BY BLOCK'] == 'A-CHECK')].index.values.astype(int)
-    # a_checks_1 = df[(df['TASK BY BLOCK'] == 'A-CHECK')
-    #                 & (df['A/C'] == 'Aircraft-1')].index.values.astype(int)
-    # a_checks_1_items = df['ITEM'][a_checks_1].unique()
 
-    # import ipdb
-    # ipdb.set_trace()
-
-    df = df.reset_index(drop=True)
     assert 'A/C' in df.keys()
     # maps aircrafts, to items, to task number (unique indentifier) to stuffs, I think it makes sense,
     # but we should also return the df for searching purposes!
+    aircraft_tasks = OrderedDict()
+    import ipdb
+    ipdb.set_trace()
+    for _ in df['A/C'].unique():
+        aircraft_tasks[_] = OrderedDict()
+
     for line_idx in tqdm(range(len(df['A/C']))):
         aircraft = df['A/C'][line_idx]
         item = df['ITEM'][line_idx]
@@ -155,25 +152,35 @@ def book_to_kwargs_tasks(book, aircrafts):
                 value = df[column_idx][line_idx]
                 aircraft_tasks[aircraft][item][line_idx][column_idx] = value
 
+    #add a_check_items for now
+    for aircraft in aircraft_tasks.keys():
+        a_checks_idxs = df[(df['TASK BY BLOCK'] == 'A-CHECK')
+                           & (df['A/C'] == aircraft)].index.values.astype(int)
+        a_checks_items = df['ITEM'][a_checks_idxs].unique()
+        aircraft_tasks[aircraft]['a_checks_items'] = a_checks_items
+
     print("INFO: information from runtime parsed with success")
     print("#########################")
 
-    return {'aircraft_tasks': aircraft_tasks, 'df': df}
+    return {'aircraft_tasks': aircraft_tasks, 'df_tasks': df}
+
+
+def book_to_kwargs(book_checks, book_tasks):
+    kwargs = book_to_kwargs_MPO(book_checks)
+    kwargs_tasks = book_to_kwargs_tasks(book_tasks)
+    kwargs.update(kwargs_tasks)
+    return kwargs
 
 
 if __name__ == '__main__':
     try:
         f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
-        book = excel_to_book(f1_in)
+        book_checks = excel_to_book(f1_in)
+        book_tasks = excel_to_book(f1_in_tasks)
     except Exception as e:
         raise e
 
-    kwargs = book_to_kwargs_MPO(book)
-    aircrafts = kwargs['aircraft_info'].keys()
-    try:
-        book = excel_to_book(f1_in_tasks)
-    except Exception as e:
-        raise e
-    kwargs_tasks = book_to_kwargs_tasks(book, aircrafts)
+    kwargs = book_to_kwargs(book_checks, book_tasks)
+
     import ipdb
     ipdb.set_trace()
