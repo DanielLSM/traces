@@ -119,16 +119,28 @@ def book_to_kwargs_tasks(book, aircrafts):
     sheet_name = 'TASK_LIST'
     df = book[sheet_name]
     import ipdb
-    for _ in df.keys():
-        df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
 
+    def process_df(df):
+        for _ in df.keys():
+            df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
+        df['PER FH'].fillna(False, inplace=True)
+        df['PER FC'].fillna(False, inplace=True)
+        df['PER CALEND'].fillna(False, inplace=True)
+        df['TASK BY BLOCK'].fillna("OTHER", inplace=True)
+        return df
+
+    df = process_df(df)
     # df = df[df['TASK BY BLOCK'] != 'LINE MAINTENANCE']
+    # a_checks = df[(df['TASK BY BLOCK'] == 'A-CHECK')].index.values.astype(int)
+    # a_checks_1 = df[(df['TASK BY BLOCK'] == 'A-CHECK')
+    #                 & (df['A/C'] == 'Aircraft-1')].index.values.astype(int)
+    # a_checks_1_items = df['ITEM'][a_checks_1].unique()
 
-    df = df.reset_index(drop=True)
-    # ipdb.set_trace()
-    assert 'A/C' in df.keys()
     # import ipdb
     # ipdb.set_trace()
+
+    df = df.reset_index(drop=True)
+    assert 'A/C' in df.keys()
     # maps aircrafts, to items, to task number (unique indentifier) to stuffs, I think it makes sense,
     # but we should also return the df for searching purposes!
     for line_idx in tqdm(range(len(df['A/C']))):
