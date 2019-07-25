@@ -117,24 +117,36 @@ def book_to_kwargs_tasks(book, aircrafts):
         aircraft_tasks[_] = OrderedDict()
 
     sheet_name = 'TASK_LIST'
-    total = len(book[sheet_name]['A/C'])
-    if 'A/C' in book[sheet_name].keys():
-        for line_idx in tqdm(range(len(book[sheet_name]['A/C']))):
-            for column_idx in book[sheet_name].keys():
-                if column_idx != 'A/C' and column_idx != 'ITEM':
-                    aircraft = book[sheet_name]['A/C'][line_idx]
-                    item = book[sheet_name]['ITEM'][line_idx]
-                    if item not in list(aircraft_tasks[aircraft].keys()):
-                        aircraft_tasks[aircraft][item] = OrderedDict()
-                    value = book[sheet_name][column_idx][line_idx]
-                    aircraft_tasks[aircraft][item] = {column_idx: value}
+    df = book[sheet_name]
+    import ipdb
+    for _ in df.keys():
+        df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
+
+    # df = df[df['TASK BY BLOCK'] != 'LINE MAINTENANCE']
+
+    df = df.reset_index(drop=True)
+    # ipdb.set_trace()
+    assert 'A/C' in df.keys()
+    # import ipdb
+    # ipdb.set_trace()
+    # maps aircrafts, to items, to task number (unique indentifier) to stuffs, I think it makes sense,
+    # but we should also return the df for searching purposes!
+    for line_idx in tqdm(range(len(df['A/C']))):
+        aircraft = df['A/C'][line_idx]
+        item = df['ITEM'][line_idx]
+        if item not in aircraft_tasks[aircraft].keys():
+            aircraft_tasks[aircraft][item] = OrderedDict()
+            aircraft_tasks[aircraft][item]['assignments'] = []
+        aircraft_tasks[aircraft][item][line_idx] = OrderedDict()
+        for column_idx in df.keys():
+            if column_idx != 'A/C' and column_idx != 'ITEM':
+                value = df[column_idx][line_idx]
+                aircraft_tasks[aircraft][item][line_idx][column_idx] = value
 
     print("INFO: information from runtime parsed with success")
     print("#########################")
 
-    return {
-        'aircraft_tasks': aircraft_tasks,
-    }
+    return {'aircraft_tasks': aircraft_tasks, 'df': df}
 
 
 if __name__ == '__main__':
