@@ -140,9 +140,6 @@ class SchedulerEDF(FleetManagerBase):
             context = self.compute_next_context(schedule_partial,
                                                 self.end_date)
 
-    def plan_tasks(self):
-        pass
-
     def restrict_calendar(self, assignment):
         check_types = ['a-type', 'c-type']
         for aircraft in assignment.keys():
@@ -382,12 +379,22 @@ class SchedulerEDF(FleetManagerBase):
 
     def plan_tasks_fleet(self):
         global_schedule = self.global_schedule
-        for _ in self.global_schedule:
-            plan_tasks()
+        global_schedule_tasks = OrderedDict()
+        for aircraft in self.global_schedule.keys():
+            schedule_tasks = self.plan_tasks(aircraft)
+            global_schedule_tasks[aircraft] = schedule_tasks
+        self.global_schedule_tasks = global_schedule_tasks
 
-    def plan_tasks(self):
-        pass
+    def plan_tasks(self, aircraft):
+        #A-checks only have flight hours for now
+        maintenance_task_plan_aircraft = OrderedDict()
+        maintenance_task_plan_aircraft['a_check_tasks'] = self.plan_a_checks(
+            aircraft)
+        return maintenance_task_plan_aircraft
 
+    def plan_a_checks(self, aircraft):
+        items = self.aircraft_tasks[aircraft]
+        return items
 
 if __name__ == '__main__':
 
