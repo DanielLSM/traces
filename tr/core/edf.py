@@ -34,11 +34,9 @@ class SchedulerEDF(FleetManagerBase):
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
 
-        import ipdb
-        ipdb.set_trace()
+        self.plan_tasks_fleet()
 
         self.plan_maintenance_opportunities()
-        self.plan_tasks()
 
         self._save_to_xls(self.global_schedule)
 
@@ -378,7 +376,6 @@ class SchedulerEDF(FleetManagerBase):
         return due_date, waste, start_date
 
     def plan_tasks_fleet(self):
-        global_schedule = self.global_schedule
         global_schedule_tasks = OrderedDict()
         for aircraft in self.global_schedule.keys():
             schedule_tasks = self.plan_tasks(aircraft)
@@ -394,7 +391,9 @@ class SchedulerEDF(FleetManagerBase):
 
     def plan_a_checks(self, aircraft):
         items = self.aircraft_tasks[aircraft]
+        import ipdb; ipdb.set_trace()
         return items
+
 
 if __name__ == '__main__':
 
