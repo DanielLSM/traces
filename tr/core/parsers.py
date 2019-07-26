@@ -73,8 +73,8 @@ def get_restrictions_MPO(book):
     restrictions_info = OrderedDict()
     for sheet_name in book.keys():
         if 'A/C TAIL' not in book[sheet_name].keys():
-            for column_idx in book[sheet_name].keys():
-                restrictions_info[sheet_name] = book[sheet_name].to_dict()
+            # for column_idx in book[sheet_name].keys():
+            restrictions_info[sheet_name] = book[sheet_name].to_dict()
 
     print('INFO: restrictions info completed')
     return restrictions_info
@@ -135,8 +135,6 @@ def book_to_kwargs_tasks(book):
     # maps aircrafts, to items, to task number (unique indentifier) to stuffs, I think it makes sense,
     # but we should also return the df for searching purposes!
     aircraft_tasks = OrderedDict()
-    import ipdb
-    ipdb.set_trace()
     for _ in df['A/C'].unique():
         aircraft_tasks[_] = OrderedDict()
 
@@ -181,6 +179,3 @@ if __name__ == '__main__':
         raise e
 
     kwargs = book_to_kwargs(book_checks, book_tasks)
-
-    import ipdb
-    ipdb.set_trace()

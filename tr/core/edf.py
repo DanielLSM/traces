@@ -3,7 +3,7 @@ import pandas as pd
 from collections import OrderedDict, defaultdict
 
 from tr.core.resources import f1_in, f2_out
-from tr.core.parsers import excel_to_book, book_to_kwargs_MPO
+from tr.core.parsers import excel_to_book, book_to_kwargs
 from tr.core.common import FleetManagerBase
 from tr.core.utils import advance_date, dates_between
 from tr.core.csp import Variable, Assignment, Schedule
@@ -33,6 +33,9 @@ class SchedulerEDF(FleetManagerBase):
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
+
+        import ipdb
+        ipdb.set_trace()
 
         self.plan_maintenance_opportunities()
         self.plan_tasks()
@@ -377,13 +380,27 @@ class SchedulerEDF(FleetManagerBase):
         waste = [maxDY - DY, maxFH - FH, maxFC - FC]
         return due_date, waste, start_date
 
+    def plan_tasks_fleet(self):
+        global_schedule = self.global_schedule
+        for _ in self.global_schedule:
+            plan_tasks()
+
+    def plan_tasks(self):
+        pass
+
 
 if __name__ == '__main__':
 
     import time
+    from resources import f1_in_checks, f1_in_tasks
+
     t = time.time()
-    f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
-    book = excel_to_book(f1_in)
-    kwargs = book_to_kwargs_MPO(book)
+    try:
+        book_checks = excel_to_book(f1_in_checks)
+        book_tasks = excel_to_book(f1_in_tasks)
+    except Exception as e:
+        raise e
+
+    kwargs = book_to_kwargs(book_checks, book_tasks)
     scheduler = SchedulerEDF(**kwargs)
     print("INFO: total elapsed time {} seconds".format(time.time() - t))
