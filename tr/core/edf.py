@@ -26,7 +26,8 @@ checks = {
 
 
 class SchedulerEDF(FleetManagerBase):
-    """ Currently for A/C-Checks only, nodes are partial schedules and, tree as total schedules """
+    """ Currently for A/C-Checks only, nodes are partial schedules and, 
+    tree as total schedules """
 
     def __init__(self, *args, **kwargs):
         FleetManagerBase.__init__(self, **kwargs)
@@ -146,7 +147,7 @@ class SchedulerEDF(FleetManagerBase):
                 self.calendar.calendar[due_date]['resources']['slots'][_] -= 1
 
     def cspify(self, context):
-        #order vars by due date
+        # order vars by due date
         sorted_x = sorted(
             context.items(),
             key=lambda kv: kv[1]['A_INITIAL']['due_date'].timestamp(),
@@ -343,7 +344,7 @@ class SchedulerEDF(FleetManagerBase):
                                 maxDY=maxDY,
                                 maxFH=maxFH,
                                 maxFC=maxFC)
-        return schedule_partial  #this is the context, e.g, next_due_dates
+        return schedule_partial  # this is the context, e.g, next_due_dates
 
     def compute_next_due_date(self,
                               start_date,
@@ -383,16 +384,31 @@ class SchedulerEDF(FleetManagerBase):
         self.global_schedule_tasks = global_schedule_tasks
 
     def plan_tasks(self, aircraft):
-        #A-checks only have flight hours for now
+        # A-checks only have flight hours for now
         maintenance_task_plan_aircraft = OrderedDict()
         maintenance_task_plan_aircraft['a_check_tasks'] = self.plan_a_checks(
             aircraft)
         return maintenance_task_plan_aircraft
 
     def plan_a_checks(self, aircraft):
-        items = self.aircraft_tasks[aircraft]
-        import ipdb; ipdb.set_trace()
+        a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
+        for a_item_code in a_items_codes:
+            if a_item_code == "256241-05-1":
+                import ipdb
+                ipdb.set_trace()
+            a_item = self.aircraft_tasks[aircraft][a_item_code]
+            task_a = a_item[list(a_item.keys())[-1]]
+            compute_expected_due_date_item(task_a)
+            fh_diff = task_a['LIMIT FH'] - task_a['LAST EXEC FH']
+            fh_left = task_a['PER FH'] - fh_diff
+            assert fh_left >= 0, "impossible to schedule task {}".format(
+                a_item_code)
+        import ipdb
+        ipdb.set_trace()
         return items
+
+    def compute_expected_due_date_item(self):
+        pass
 
 
 if __name__ == '__main__':

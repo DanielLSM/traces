@@ -67,11 +67,11 @@ class Schedule(Assignment):
         super().assign(var, value)
         self.unassigned_vars.pop()
 
-    #TODO lets do the processing here
+    # TODO lets do the processing here
     def order_var_earliest_due_date(self):
         pass
 
-    #TODO this is naturally done when building the domain!
+    # TODO this is naturally done when building the domain!
     def order_domain_due_date(self):
         pass
 
@@ -87,11 +87,11 @@ class CSP:
         if self.constraints:
             self.vars_constraints = {var: [] for var in self.vars}
 
-    #we can make an yield on this one
+    # we can make an yield on this one
     def select_next_var(self, assignment):
         return random.choice(assignment.vars)
 
-    #we can make an yield on this one
+    # we can make an yield on this one
     def select_next_value(self, assignment, var):
         return random.choice(assignment.vars_domain[var])
 
