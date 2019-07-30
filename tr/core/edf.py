@@ -1,5 +1,10 @@
 import numpy
 import pandas as pd
+from tqdm import tqdm
+import pulp as plp
+import time
+# from copy import deep
+
 from collections import OrderedDict, defaultdict
 
 from tr.core.resources import f1_in, f2_out
@@ -8,10 +13,6 @@ from tr.core.common import FleetManagerBase
 from tr.core.utils import advance_date, dates_between
 from tr.core.csp import Variable, Assignment, Schedule
 from tr.core.backtrack import solve_csp_schedule
-
-import pulp as plp
-import time
-# from copy import deep
 
 checks = {
     'A_INITIAL': {
@@ -35,6 +36,7 @@ class SchedulerEDF(FleetManagerBase):
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
 
+        self._pre_process_tasks()
         self.plan_tasks_fleet()
 
         self.plan_maintenance_opportunities()
@@ -376,6 +378,58 @@ class SchedulerEDF(FleetManagerBase):
         waste = [maxDY - DY, maxFH - FH, maxFC - FC]
         return due_date, waste, start_date
 
+
+###############################################################################
+# TASKS
+###############################################################################
+
+    def _pre_process_tasks(self):
+        print("INFO: Pre processing tasks")
+        for aircraft in self.aircraft_tasks.keys():
+            self._pre_process_a_tasks(aircraft)
+        print("INFO: tasks information processed and ready to use")
+
+    def _pre_process_a_tasks(self, aircraft):
+
+        a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
+        for a_item_code in a_items_codes:
+            a_item = self.aircraft_tasks[aircraft][a_item_code]
+            task_number = list(a_item.keys())[-1]
+            task_a = a_item[task_number]
+            import ipdb
+            ipdb.set_trace()
+            days_passed = dates_between(self.start_date,
+                                        task_a['LAST EXEC DT'])
+            maxFC_task = task_a['LIMIT FC'] if task_a['LIMIT FC'] else 10000
+            maxFH_task = task_a['LIMIT FH'] if task_a['LIMIT FH'] else 10000
+            last_exec_fc = task_a['LAST EXEC FC']
+            last_exec_fh = task_a['LAST EXEC FH']
+
+            current_date = task_a['LAST EXEC DT']
+            current_FC, current_FH, days = 0, 0, 0
+            month = (current_date.month_name()[0:3]).upper()
+
+            while days <= days_passed:
+                month = (current_date.month_name()[0:3]).upper()
+                current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
+                current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
+                days += 1
+                current_date = advance_date(due_date, days=int(1))
+            assert current_FC < maxFC_task, "Task {} on due_date".format(
+                a_item_code)
+            assert current_FH < maxFH_task, "Task {} on due_date".format(
+                a_item_code)
+            assert current_date == self.start_date, "current date error"
+
+            self.aircraft_tasks[aircraft][a_item_code][task_number].update({
+                'CURRENT FC':
+                current_FC,
+                'CURRENT FH':
+                current_FH,
+                'LAST DUE DATE':
+                current_date
+            })
+
     def plan_tasks_fleet(self):
         global_schedule_tasks = OrderedDict()
         for aircraft in self.global_schedule.keys():
@@ -393,23 +447,41 @@ class SchedulerEDF(FleetManagerBase):
     def plan_a_checks(self, aircraft):
         a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
         for a_item_code in a_items_codes:
-            if a_item_code == "256241-05-1":
-                import ipdb
-                ipdb.set_trace()
+
+            # if a_item_code == "256241-05-1":
+            #     import ipdb
+            #     ipdb.set_trace()
             a_item = self.aircraft_tasks[aircraft][a_item_code]
             task_a = a_item[list(a_item.keys())[-1]]
-            compute_expected_due_date_item(task_a)
-            fh_diff = task_a['LIMIT FH'] - task_a['LAST EXEC FH']
-            fh_left = task_a['PER FH'] - fh_diff
+            import ipdb
+            ipdb.set_trace()
+
+            self.compute_expected_due_date_item(task_a, aircraft)
+            # fh_diff = task_a['LIMIT FH'] - task_a['LAST EXEC FH']
+            # fh_left = task_a['PER FH'] - fh_diff
             assert fh_left >= 0, "impossible to schedule task {}".format(
                 a_item_code)
         import ipdb
         ipdb.set_trace()
         return items
 
-    def compute_expected_due_date_item(self):
-        pass
+    def compute_expected_due_date_item(self, task_a, aircraft):
+        days_passed = dates_between(self.start_date, task_a['LAST EXEC DT'])
+        maxFC_task = task_a['LIMIT FC'] if task_a['LIMIT FC'] else False
+        maxFH_task = task_a['LIMIT FH'] if task_a['LIMIT FH'] else False
+        last_exec_fc = task_a['LAST EXEC FC']
+        last_exec_fh = task_a['LAST EXEC FH']
 
+        current_fc, current_fh, days = 0, 0, 0
+        month = (task_a['LAST EXEC DT'].month_name()[0:3]).upper()
+
+        while DY < maxDY_proxy and FH < maxFH_proxy and FC < maxFC_proxy:
+            month = (due_date.month_name()[0:3]).upper()
+            DY += 1
+            FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
+            FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
+            self.fleet.aircraft_info[aircraft]['DFH'][month]
+            due_date = advance_date(due_date, days=int(1))
 
 if __name__ == '__main__':
 

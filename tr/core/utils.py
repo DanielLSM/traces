@@ -31,7 +31,7 @@ def dict_to_list(pandas_dict):
 def diff_time_list(sheet, type='days'):
     # in the future we would like to...... use types different than days
     sheet_keys = list(sheet.keys())
-    assert 'BEGIN' in sheet_keys and 'END' in sheet_keys, "begin or end undefined"
+    assert 'BEGIN' in sheet_keys and 'END' in sheet_keys, "undefined"
     time_list = []
     for _ in sheet['BEGIN'].keys():
         delta = sheet['END'][_] - sheet['BEGIN'][_]

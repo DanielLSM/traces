@@ -110,8 +110,8 @@ def get_aircraft_info_MPO(book):
 def book_to_kwargs_tasks(book):
     print("#########################")
     print("INFO: processing from runtime tasks book")
-    """ given an MPO input, compute dict where keys are aircraft ids and the rest 
-    of sheet info is organized by aircraft id """
+    # given an MPO input, compute dict where keys are
+    # aircraft ids and the rest of sheet info is organized by aircraft id
 
     sheet_name = 'TASK_LIST'
     df = book[sheet_name]
@@ -132,7 +132,8 @@ def book_to_kwargs_tasks(book):
     df = process_df(df)
 
     assert 'A/C' in df.keys()
-    # maps aircrafts, to items, to task number (unique indentifier) to stuffs, I think it makes sense,
+    # maps aircrafts, to items, to task number (unique indentifier) to stuffs,
+    # I think it makes sense,
     # but we should also return the df for searching purposes!
     aircraft_tasks = OrderedDict()
     for _ in df['A/C'].unique():
@@ -150,7 +151,7 @@ def book_to_kwargs_tasks(book):
                 value = df[column_idx][line_idx]
                 aircraft_tasks[aircraft][item][line_idx][column_idx] = value
 
-    #add a_check_items for now
+    # add a_check_items for now
     for aircraft in aircraft_tasks.keys():
         a_checks_idxs = df[(df['TASK BY BLOCK'] == 'A-CHECK')
                            & (df['A/C'] == aircraft)].index.values.astype(int)
