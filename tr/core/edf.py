@@ -35,8 +35,8 @@ class SchedulerEDF(FleetManagerBase):
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
-
         self._pre_process_tasks()
+
         self.plan_tasks_fleet()
 
         self.plan_maintenance_opportunities()
@@ -386,49 +386,97 @@ class SchedulerEDF(FleetManagerBase):
     def _pre_process_tasks(self):
         print("INFO: Pre processing tasks")
         for aircraft in self.aircraft_tasks.keys():
-            self._pre_process_a_tasks(aircraft)
+            self._extend_process_a_tasks(aircraft)
         print("INFO: tasks information processed and ready to use")
 
-    def _pre_process_a_tasks(self, aircraft):
+    def _extend_process_a_tasks(self, aircraft):
 
+        print("INFO: Extend processing tasks A/C: {}".format(aircraft))
         a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
-        for a_item_code in a_items_codes:
+        black_list = []
+        for a_item_code in tqdm(a_items_codes):
             a_item = self.aircraft_tasks[aircraft][a_item_code]
             task_number = list(a_item.keys())[-1]
             task_a = a_item[task_number]
-            import ipdb
-            ipdb.set_trace()
-            days_passed = dates_between(self.start_date,
-                                        task_a['LAST EXEC DT'])
-            maxFC_task = task_a['LIMIT FC'] if task_a['LIMIT FC'] else 10000
-            maxFH_task = task_a['LIMIT FH'] if task_a['LIMIT FH'] else 10000
-            last_exec_fc = task_a['LAST EXEC FC']
-            last_exec_fh = task_a['LAST EXEC FH']
+            last_exec_date = task_a['LAST EXEC DT'] if task_a[
+                'LAST EXEC DT'] else task_a['LIMIT EXEC DT']
+            last_exec_fc = task_a['LAST EXEC FC'] if task_a[
+                'LAST EXEC FC'] else task_a['LIMIT FC']
+            last_exec_fh = task_a['LAST EXEC FH'] if task_a[
+                'LAST EXEC FH'] else task_a['LIMIT FH']
+            
+            if not (last_exec_date and (last_exec_fc or last_exec_fh)):
+                print("WARNING: Task {} ignored, missing values".format(
+                    a_item_code))
+                black_list.append(a_item_code)
+                continue
+            elif task_a['LIMIT FH'] == 2000:
+                print(
+                    "WARNING: Task {} ignored, incorrect LIMIT FH=2000".format(
+                        a_item_code))
+                black_list.append(a_item_code)
+                continue
+            # assert last_exec_date and (last_exec_fc
+            #                            or last_exec_fh), "shit excel"
 
-            current_date = task_a['LAST EXEC DT']
+            current_date = last_exec_date
             current_FC, current_FH, days = 0, 0, 0
-            month = (current_date.month_name()[0:3]).upper()
 
-            while days <= days_passed:
+            if last_exec_date < self.start_date:
+                days_passed = dates_between(last_exec_date, self.start_date)
+                maxFC_task = task_a['LIMIT FC'] if task_a[
+                    'LIMIT FC'] else 1000000
+                maxFH_task = task_a['LIMIT FH'] if task_a[
+                    'LIMIT FH'] else 1000000
+                current_FC = last_exec_fc + current_FC
+                current_FH = last_exec_fh + current_FH
+
+            else:
+                days_passed = 0
+                current_date = last_exec_date
+
+            while days < days_passed:
                 month = (current_date.month_name()[0:3]).upper()
                 current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
                 current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
                 days += 1
-                current_date = advance_date(due_date, days=int(1))
-            assert current_FC < maxFC_task, "Task {} on due_date".format(
-                a_item_code)
-            assert current_FH < maxFH_task, "Task {} on due_date".format(
-                a_item_code)
-            assert current_date == self.start_date, "current date error"
+                current_date = advance_date(current_date, days=int(1))
 
+            due_date = current_date
+            while due_date < last_exec_date and current_FC < maxFH_task and current_FC < maxFC_task:
+                month = (due_date.month_name()[0:3]).upper()
+                current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
+                current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
+                days += 1
+                due_date = advance_date(due_date, days=int(1))
+
+            try:
+                assert due_date >= current_date
+                # assert current_FC < (maxFC_task + 500), "Task {} on due_date".format(
+                #     a_item_code) # +500 because of '534160-02-3'
+                # assert current_FH < (
+                #     maxFH_task + 1000), "Task {} on due_date".format(
+                #         a_item_code)  # +300 because '532164-01-6' and +1000
+                        # because of '253400-01-1'
+                # assert current_date == self.start_date, "current date error"
+            except:
+                import ipdb
+                ipdb.set_trace()
             self.aircraft_tasks[aircraft][a_item_code][task_number].update({
                 'CURRENT FC':
                 current_FC,
                 'CURRENT FH':
                 current_FH,
                 'LAST DUE DATE':
-                current_date
+                current_date,
+                'DUE_DATE':
+                due_date
             })
+
+        # import ipdb
+        # ipdb.set_trace()
+        for blacked in black_list:
+            self.aircraft_tasks[aircraft]['a_checks_items'].remove(blacked)
 
     def plan_tasks_fleet(self):
         global_schedule_tasks = OrderedDict()
@@ -446,26 +494,25 @@ class SchedulerEDF(FleetManagerBase):
 
     def plan_a_checks(self, aircraft):
         a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
-        for a_item_code in a_items_codes:
+        assigned_dates = self.global_schedule[aircraft]['assigned_dates']
+        counter = 1 # starts on the second hangar day
+        # if the due date is before the second hangar day, put it on the first
+        # hangar day
+        for hangar_day in assigned_dates:
+            pass
 
-            # if a_item_code == "256241-05-1":
-            #     import ipdb
-            #     ipdb.set_trace()
+
+        for a_item_code in a_items_codes:
             a_item = self.aircraft_tasks[aircraft][a_item_code]
             task_a = a_item[list(a_item.keys())[-1]]
-            import ipdb
-            ipdb.set_trace()
-
-            self.compute_expected_due_date_item(task_a, aircraft)
-            # fh_diff = task_a['LIMIT FH'] - task_a['LAST EXEC FH']
-            # fh_left = task_a['PER FH'] - fh_diff
-            assert fh_left >= 0, "impossible to schedule task {}".format(
-                a_item_code)
-        import ipdb
-        ipdb.set_trace()
+            due_date = self.compute_expected_due_date_item(task_a, aircraft)
+            # self.aircraft_tasks[aircraft][a_item_code].update('Due Date': due_date)
+            # returns days of checks to tasks
         return items
 
     def compute_expected_due_date_item(self, task_a, aircraft):
+        import ipdb;
+        ipdb.set_trace()
         days_passed = dates_between(self.start_date, task_a['LAST EXEC DT'])
         maxFC_task = task_a['LIMIT FC'] if task_a['LIMIT FC'] else False
         maxFH_task = task_a['LIMIT FH'] if task_a['LIMIT FH'] else False

@@ -121,6 +121,12 @@ def book_to_kwargs_tasks(book):
             df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
         df['PER FH'].fillna(False, inplace=True)
         df['PER FC'].fillna(False, inplace=True)
+        df['LIMIT FH'].fillna(False, inplace=True)
+        df['LIMIT FC'].fillna(False, inplace=True)
+        df['LIMIT EXEC DT'].fillna(False, inplace=True)
+        df['LAST EXEC FC'].fillna(False, inplace=True)
+        df['LAST EXEC FH'].fillna(False, inplace=True)
+        df['LAST EXEC DT'].fillna(False, inplace=True)
         df['PER CALEND'].fillna(False, inplace=True)
         df['TASK BY BLOCK'].fillna("OTHER", inplace=True)
         # do not use things without due dates
@@ -156,7 +162,7 @@ def book_to_kwargs_tasks(book):
         a_checks_idxs = df[(df['TASK BY BLOCK'] == 'A-CHECK')
                            & (df['A/C'] == aircraft)].index.values.astype(int)
         a_checks_items = df['ITEM'][a_checks_idxs].unique()
-        aircraft_tasks[aircraft]['a_checks_items'] = a_checks_items
+        aircraft_tasks[aircraft]['a_checks_items'] = a_checks_items.tolist()
 
     print("INFO: information from runtime parsed with success")
     print("#########################")
