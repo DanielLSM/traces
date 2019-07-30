@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from collections import OrderedDict, defaultdict
-
+import pickle
 # from tr.core.schedule_classes import Calendar, Check
 
 
@@ -60,6 +60,17 @@ def get_slots(sheet):
             }
             slots.update(slots_per_entry)
     return slots
+
+
+def save_pickle(obj, filename):
+    with open(filename, 'wb') as handle:
+        pickle.dump(obj, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_pickle(filename):
+    with open(filename, 'rb') as handle:
+        obj = pickle.load(handle)
+    return obj
 
 
 if __name__ == '__main__':
