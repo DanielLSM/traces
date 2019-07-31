@@ -7,7 +7,7 @@ import time
 
 from collections import OrderedDict, defaultdict
 
-from tr.core.resources import f1_in, f2_out
+# from tr.core.resources import f1_in, f2_out
 from tr.core.parsers import excel_to_book, book_to_kwargs
 from tr.core.common import FleetManagerBase
 from tr.core.utils import advance_date, dates_between, save_pickle, load_pickle
@@ -35,15 +35,16 @@ class SchedulerEDF(FleetManagerBase):
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
-        self.plan_maintenance_opportunities()
-        save_pickle(self.global_schedule, "checks.pkl")
-        
+        # self.plan_maintenance_opportunities()
+        # save_pickle(self.global_schedule, "checks.pkl")
+        self.global_schedule = load_pickle('checks.pkl')
+        # import ipdb
+        # ipdb.set_trace()
         self._pre_process_tasks()
         self.plan_tasks_fleet()
 
-
-        self.save_checks_to_xls(self.global_schedule)
-
+        self.save_checks_to_xlsx()
+        self.save_tasks_to_xlsx()
 
     @staticmethod
     def _set_global_schedule(context):
@@ -61,8 +62,8 @@ class SchedulerEDF(FleetManagerBase):
             global_schedule[aircraft]['FC LOST'] = []
         return global_schedule
 
-    @staticmethod
-    def save_checks_to_xls(global_schedule):
+    def save_checks_to_xlsx(self):
+        print("INFO: Saving xlsx files")
         dict1 = OrderedDict()
         dict1['Fleet'] = []
         dict1['A/C ID'] = []
@@ -74,29 +75,80 @@ class SchedulerEDF(FleetManagerBase):
         dict1['DY LOST'] = []
         dict1['FH LOST'] = []
         dict1['FC LOST'] = []
-        i = 1
-        for aircraft in global_schedule.keys():
-            for _ in range(len(global_schedule[aircraft]['due_dates'])):
+        for aircraft in self.global_schedule.keys():
+            for _ in range(len(self.global_schedule[aircraft]['due_dates'])):
                 dict1['Fleet'].append(aircraft[0:4])
                 dict1['A/C ID'].append(aircraft[5:])
-                dict1['START'].append(global_schedule[aircraft]['due_dates']
-                                      [_].date().isoformat())
-                dict1['END'].append(global_schedule[aircraft]['due_dates']
+                dict1['START'].append(self.global_schedule[aircraft]
+                                      ['due_dates'][_].date().isoformat())
+                dict1['END'].append(self.global_schedule[aircraft]['due_dates']
                                     [_].date().isoformat())
-                dict1['DY'].append(global_schedule[aircraft]['DY'][_])
-                dict1['FH'].append(global_schedule[aircraft]['FH'][_])
-                dict1['FC'].append(global_schedule[aircraft]['FC'][_])
+                dict1['DY'].append(self.global_schedule[aircraft]['DY'][_])
+                dict1['FH'].append(self.global_schedule[aircraft]['FH'][_])
+                dict1['FC'].append(self.global_schedule[aircraft]['FC'][_])
                 dict1['DY LOST'].append(
-                    global_schedule[aircraft]['DY LOST'][_])
+                    self.global_schedule[aircraft]['DY LOST'][_])
                 dict1['FH LOST'].append(
-                    global_schedule[aircraft]['FH LOST'][_])
+                    self.global_schedule[aircraft]['FH LOST'][_])
                 dict1['FC LOST'].append(
-                    global_schedule[aircraft]['FC LOST'][_])
-                i += 1
+                    self.global_schedule[aircraft]['FC LOST'][_])
         df = pd.DataFrame(dict1, columns=dict1.keys())
 
         print(df)
-        df.to_excel('output.xlsx')
+        df.to_excel('checks.xlsx')
+
+    def save_tasks_to_xlsx(self):
+        print("INFO: Saving xlsx files")
+        dict1 = OrderedDict()
+        dict1['A/C ID'] = []
+        dict1['MAINTENANCE OPPORTUNITY'] = []
+        dict1['ITEM'] = []
+        dict1['REF TAP'] = []
+        dict1['DESCRIPTION'] = []
+        dict1['BLOCK'] = []
+        dict1['SKILL'] = []
+        dict1['TASK BY BLOCK'] = []
+
+        df = self.df_tasks
+        for aircraft in tqdm(self.global_schedule_tasks.keys()):
+            for day in self.global_schedule_tasks[aircraft][
+                    'a_check_tasks'].keys():
+                for item in self.global_schedule_tasks[aircraft][
+                        'a_check_tasks'][day]:
+                    item_idxs = df[(df['A/C'] == aircraft) & (
+                        df['ITEM'] == item)].index.values.astype(int)
+                    # item_idxs = item_idxs.tolist()
+                    # import ipdb
+                    # ipdb.set_trace()
+                    assert len(item_idxs) != 0
+                    refs = df['REF TAP'][item_idxs].tolist()
+                    descriptions = df['DESCRIPTION'][item_idxs].tolist()
+                    blocks = df['BLOCK'][item_idxs].tolist()
+                    skills = df['SKILL'][item_idxs].tolist()
+                    taskbblock = df['TASK BY BLOCK'][item_idxs].tolist()
+                    # import ipdb
+                    # ipdb.set_trace()
+                    for _ in range(len(refs)):
+                        dict1['A/C ID'].append(aircraft)
+                        dict1['MAINTENANCE OPPORTUNITY'].append(
+                            day.date().isoformat())
+                        dict1['ITEM'].append(item)
+                        dict1['REF TAP'].append(refs[_])
+                        dict1['DESCRIPTION'].append(descriptions[_])
+                        dict1['BLOCK'].append(blocks[_])
+                        dict1['SKILL'].append(skills[_])
+                        dict1['TASK BY BLOCK'].append(taskbblock[_])
+
+                # dict1['A/C ID'].append(aircraft)
+                # dict1['START'].append(self.global_schedule_tasks[aircraft]['due_dates']
+                #                       [_].date().isoformat())
+                # dict1['END'].append(self.global_schedule_tasks[aircraft]['due_dates']
+                #                     [_].date().isoformat())
+
+        df = pd.DataFrame(dict1, columns=dict1.keys())
+
+        len(df)
+        df.to_excel('tasks.xlsx')
 
     def _add_to_global_schedule(self, schedule_partial):
         for aircraft in self.fleet.aircraft_info.keys():
@@ -387,7 +439,7 @@ class SchedulerEDF(FleetManagerBase):
 
     def _pre_process_tasks(self):
         print("INFO: Pre processing tasks")
-        for aircraft in self.aircraft_tasks.keys():
+        for aircraft in tqdm(self.aircraft_tasks.keys()):
             self._extend_process_a_tasks(aircraft)
         print("INFO: tasks information processed and ready to use")
 
@@ -396,7 +448,7 @@ class SchedulerEDF(FleetManagerBase):
         print("INFO: Extend processing tasks A/C: {}".format(aircraft))
         a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
         black_list = []
-        for a_item_code in tqdm(a_items_codes):
+        for a_item_code in a_items_codes:
             a_item = self.aircraft_tasks[aircraft][a_item_code]
             task_number = list(a_item.keys())[-1]
             task_a = a_item[task_number]
@@ -413,11 +465,14 @@ class SchedulerEDF(FleetManagerBase):
                 black_list.append(a_item_code)
                 continue
             elif task_a['LIMIT FH'] == 2000:
-                print(
-                    # "WARNING: Task {} ignored, incorrect LIMIT FH=2000".format(
-                    #     a_item_code))
+                # print(
+                # "WARNING: Task {} ignored, incorrect LIMIT FH=2000".format(
+                #     a_item_code))
                 black_list.append(a_item_code)
                 continue
+            elif (not task_a['PER FC'] and not task_a['PER FH']):
+                black_list.append(a_item_code)
+
             # assert last_exec_date and (last_exec_fc
             #                            or last_exec_fh), "shit excel"
 
@@ -488,17 +543,18 @@ class SchedulerEDF(FleetManagerBase):
 
     def plan_tasks_fleet(self):
         global_schedule_tasks = OrderedDict()
-        for aircraft in self.global_schedule.keys():
+        print("INFO: Task planning for the fleet")
+        for aircraft in tqdm(self.global_schedule.keys()):
             schedule_tasks = self.plan_tasks(aircraft)
             global_schedule_tasks[aircraft] = schedule_tasks
         self.global_schedule_tasks = global_schedule_tasks
+        print("INFO: Task Planning finished")
 
     def plan_tasks(self, aircraft):
         # A-checks only have flight hours for now
-        maintenance_task_plan_aircraft = OrderedDict()
-        maintenance_task_plan_aircraft['a_check_tasks'] = self.plan_a_checks(
-            aircraft)
-        return maintenance_task_plan_aircraft
+        schedule_tasks = OrderedDict()
+        schedule_tasks['a_check_tasks'] = self.plan_a_checks(aircraft)
+        return schedule_tasks
 
     def plan_a_checks(self, aircraft):
         a_items_codes = self.aircraft_tasks[aircraft]['a_checks_items']
@@ -510,52 +566,57 @@ class SchedulerEDF(FleetManagerBase):
         # starts on the second hangar day
         # if the due date is before the second hangar day, put it on the first
         # hangar day
-        for _ in range(len(assigned_dates)):
+        for _ in range(len(assigned_dates) - 1):
             for a_item_code in a_items_codes:
                 a_item = self.aircraft_tasks[aircraft][a_item_code]
                 task_number = list(a_item.keys())[-1]
                 task_a = a_item[task_number]
                 if task_a['DUE DATE'] < assigned_dates[counter]:
-                    a_checks_tasks_schedule[_].append(a_item_code)
+                    hangar_day = assigned_dates[_]
+                    a_checks_tasks_schedule[hangar_day].append(a_item_code)
                     self.move_due_date_item(task_a, aircraft,
                                             assigned_dates[counter],
-                                            task_number)
-                    try:
-                        assert task_a['DUE DATE'] < assigned_dates[counter - 1]
-                    except:
-                        print("yayikers bro")
-                        import ipdb
-                        ipdb.set_trace()
+                                            task_number, a_item_code)
+                    # try:
+                    #     if counter > 1:
+                    #         assert (task_a['DUE DATE'] <
+                    #                 assigned_dates[counter - 1])
+                    # except:
+                    #     print("yayikers bro")
+                    #     import ipdb
+                    #     ipdb.set_trace()
             counter += 1
-            import ipdb
-            ipdb.set_trace()
 
-            # self.aircraft_tasks[aircraft][a_item_code].update('Due Date': due_date)
             # returns days of checks to tasks
         return a_checks_tasks_schedule
 
-    def move_due_date_item(self, task_a, aircraft, assigned_date, task_number):
-
-        # last_exec_date = task_a['LAST EXEC DT']
-        # last_exec_fc = task_a['LAST EXEC FC']
-        # last_exec_fh = task_a['LAST EXEC FH']
-        # current_FC = task_a['CURRENT FC']
-        # current_FH = task_a['CURRENT FH']
-        current_date = task_a['CURRENT DUE DATE']
-        due_date = task_a['DUE DATE']
+    def move_due_date_item(self, task_a, aircraft, assigned_date, task_number,
+                           a_item_code):
 
         delta_FC = task_a['PER FC'] if task_a['PER FC'] else 100000
         delta_FH = task_a['PER FH'] if task_a['PER FH'] else 100000
         current_FC, current_FH = 0, 0
 
         due_date = assigned_date
-        while current_FC < delta_FC and current_FC < delta_FH:
-            month = (due_date.month_name()[0:3]).upper()
-            current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
-            current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
-            due_date = advance_date(due_date, days=int(1))
+        month = (due_date.month_name()[0:3]).upper()
+        dfh = self.fleet.aircraft_info[aircraft]['DFH'][month]
+        dfc = self.fleet.aircraft_info[aircraft]['DFC'][month]
+        # current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
+        # current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
 
-        self.aircraft_tasks[aircraft][a_item_code]['assigned'] = assigned_date
+        days = round(min(delta_FC / dfc, delta_FH / dfh))
+        due_date = advance_date(due_date, days=int(days))
+        # import ipdb
+        # ipdb.set_trace()
+
+        # while current_FC < delta_FC and current_FC < delta_FH:
+        #     month = (due_date.month_name()[0:3]).upper()
+        #     current_FH += self.fleet.aircraft_info[aircraft]['DFH'][month]
+        #     current_FC += self.fleet.aircraft_info[aircraft]['DFC'][month]
+        #     due_date = advance_date(due_date, days=int(1))
+
+        self.aircraft_tasks[aircraft][a_item_code]['assignments'].append(
+            assigned_date)
         self.aircraft_tasks[aircraft][a_item_code][task_number][
             'DUE DATE'] = due_date
 

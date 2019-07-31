@@ -3,7 +3,7 @@ import pandas as pd
 import time
 from collections import OrderedDict, defaultdict
 
-from tr.core.resources import f1_in, f2_out
+# from tr.core.resources import f1_in, f2_out
 from tr.core.parsers import book_to_kwargs_MPO
 from tr.core.utils import advance_date, dates_between
 

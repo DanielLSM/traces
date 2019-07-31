@@ -3,7 +3,7 @@ import random
 import datetime
 from tqdm import tqdm
 
-from tr.core.resources import f1_in, f2_out, f1_in_tasks
+from tr.core.resources import f2_out, f1_in_tasks
 from tr.core.utils import dict_to_list, diff_time_list, get_slots
 from tr.core.utils import advance_date
 
