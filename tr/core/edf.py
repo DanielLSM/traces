@@ -37,14 +37,11 @@ class SchedulerEDF(FleetManagerBase):
         self.global_schedule = self._set_global_schedule(self.initial_context)
         # self.plan_maintenance_opportunities()
         # save_pickle(self.global_schedule, "checks.pkl")
-        self.global_schedule = load_pickle('checks.pkl')
-        # import ipdb
-        # ipdb.set_trace()
-        self._pre_process_tasks()
-        self.plan_tasks_fleet()
-
-        self.save_checks_to_xlsx()
-        self.save_tasks_to_xlsx()
+        # self.global_schedule = load_pickle('checks.pkl')
+        # self.pre_process_tasks()
+        # self.plan_tasks_fleet()
+        # self.save_checks_to_xlsx()
+        # self.save_tasks_to_xlsx()
 
     @staticmethod
     def _set_global_schedule(context):
@@ -149,6 +146,22 @@ class SchedulerEDF(FleetManagerBase):
 
         len(df)
         df.to_excel('tasks.xlsx')
+
+    def save_checks_pickle(self, filename="checks.pkl"):
+        print("INFO: compressing checks information")
+        save_pickle(self.global_schedule, filename)
+
+    def load_checks_pickle(self, filename="checks.pkl"):
+        print("INFO: loading compressed checks information")
+        self.global_schedule = load_pickle(filename)
+
+    def save_tasks_pickle(self, filename="tasks.pkl"):
+        print("INFO: compressing tasks information")
+        save_pickle(self.global_schedule, filename)
+
+    def load_checks_pickle(filename="tasks.pkl"):
+        print("INFO: loading compressed tasks information")
+        self.global_schedule_tasks = load_pickle(filename)
 
     def _add_to_global_schedule(self, schedule_partial):
         for aircraft in self.fleet.aircraft_info.keys():
@@ -437,7 +450,7 @@ class SchedulerEDF(FleetManagerBase):
 # TASKS
 ###############################################################################
 
-    def _pre_process_tasks(self):
+    def pre_process_tasks(self):
         print("INFO: Pre processing tasks")
         for aircraft in tqdm(self.aircraft_tasks.keys()):
             self._extend_process_a_tasks(aircraft)
