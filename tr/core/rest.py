@@ -12,29 +12,39 @@ class SchedulerRest(SchedulerEDF):
 
     def server_plan_opportunities(self):
         self.plan_maintenance_opportunities()
+        print("INFO: Planning of maintenanance opportunities complete")
+
+    def server_preprocess_tasks(self):
+        self.pre_process_tasks()
+        print("INFO: Tasks pre-process complete")
 
     def server_plan_tasks(self):
-        self.pre_process_tasks()
         self.plan_tasks_fleet()
-        print("INFO: Task plan complete")
+        print("INFO: Tasks plan complete")
 
     def server_save_checks_xlsx(self):
         self.save_checks_to_xlsx()
+        print("INFO: Server saved xlsx of checks")
 
     def server_save_tasks_xlsx(self):
         self.save_tasks_to_xlsx()
+        print("INFO: Server saved xlsx of tasks")
 
     def server_save_checks(self):
         self.save_checks_pickle()
+        print("INFO: Server compressed checks into file")
 
     def server_load_checks(self):
         self.load_checks_pickle()
+        print("INFO: Server loaded compressed checks")
 
     def server_save_tasks(self):
         self.save_tasks_pickle()
+        print("INFO: Server compressed tasks into file")
 
     def server_load_tasks(self):
         self.load_checks_tasks()
+        print("INFO: Server loaded compressed tasks")
 
 
 # class CalcApi(object):

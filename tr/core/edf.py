@@ -157,7 +157,7 @@ class SchedulerEDF(FleetManagerBase):
 
     def save_tasks_pickle(self, filename="tasks.pkl"):
         print("INFO: compressing tasks information")
-        save_pickle(self.global_schedule, filename)
+        save_pickle(self.global_schedule_tasks, filename)
 
     def load_checks_pickle(filename="tasks.pkl"):
         print("INFO: loading compressed tasks information")
