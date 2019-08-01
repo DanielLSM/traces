@@ -35,7 +35,7 @@ class SchedulerEDF(FleetManagerBase):
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule(self.initial_context)
-        # self.plan_maintenance_opportunities()
+        self.plan_maintenance_opportunities()
         # save_pickle(self.global_schedule, "checks.pkl")
         # self.global_schedule = load_pickle('checks.pkl')
         # self.pre_process_tasks()
@@ -190,7 +190,6 @@ class SchedulerEDF(FleetManagerBase):
         time0 = time.time()
         context = self.initial_context
         while not self.is_context_done(context):
-
             csp_vars = self.cspify(context)
             assignment, tree = solve_csp_schedule(csp_vars)
             self.full_tree.append(tree)
