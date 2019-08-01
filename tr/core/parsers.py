@@ -3,9 +3,9 @@ import random
 import datetime
 from tqdm import tqdm
 
-from tr.core.resources import f2_out, f1_in_tasks
+from tr.core.resources import f2_out, f1_in_tasks, f1_in_checks
 from tr.core.utils import dict_to_list, diff_time_list, get_slots
-from tr.core.utils import advance_date
+from tr.core.utils import advance_date, days_between_dates, convert_iso_to_timestamp
 
 from collections import OrderedDict, defaultdict
 
@@ -170,19 +170,42 @@ def book_to_kwargs_tasks(book):
     return {'aircraft_tasks': aircraft_tasks, 'df_tasks': df}
 
 
-def book_to_kwargs(book_checks, book_tasks):
+def book_to_kwargs_output(book_output):
+    dfc = book_output['C-CHECK LIST']
+    aircrafts = (dfc['A/C TAIL'].unique()).tolist()
+    c_checks = OrderedDict()
+    for _ in aircrafts:
+        c_checks[_] = OrderedDict()
+
+    for idx in range(len(dfc['A/C TAIL'])):
+        aircraft = dfc['A/C TAIL'][idx]
+        c_check_code = dfc['CHECK'][idx]
+        start_day = convert_iso_to_timestamp(dfc['START'][idx])
+        end_day = convert_iso_to_timestamp(dfc['END'][idx])
+        days = days_between_dates(start_day, end_day)
+        assert c_check_code not in c_checks[aircraft].keys()
+        c_checks[aircraft][c_check_code] = days
+
+    return {'c-checks': c_checks}
+
+
+def book_to_kwargs(book_checks, book_tasks, book_output):
     kwargs = book_to_kwargs_MPO(book_checks)
     kwargs_tasks = book_to_kwargs_tasks(book_tasks)
     kwargs.update(kwargs_tasks)
+    kwargs_output = book_to_kwargs_output(book_output)
+    kwargs.update(kwargs_output)
     return kwargs
 
 
 if __name__ == '__main__':
     try:
-        f1_in = "~/local-dev/traces/resources/Check Scheduling Input.xlsx"
-        book_checks = excel_to_book(f1_in)
-        book_tasks = excel_to_book(f1_in_tasks)
+        # book_checks = excel_to_book(f1_in_checks)
+        # book_tasks = excel_to_book(f1_in_tasks)
+        book_output = excel_to_book(f2_out)
     except Exception as e:
         raise e
 
-    kwargs = book_to_kwargs(book_checks, book_tasks)
+    book_to_kwargs_output(book_output)
+    # kwargs = book_to_kwargs(book_checks, book_tasks)
+    # kwargs = book_to_kwargs_output(book_output)

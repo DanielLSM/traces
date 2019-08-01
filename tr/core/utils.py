@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -31,7 +32,8 @@ def dict_to_list(pandas_dict):
 def diff_time_list(sheet, type='days'):
     # in the future we would like to...... use types different than days
     sheet_keys = list(sheet.keys())
-    assert 'BEGIN' in sheet_keys and 'END' in sheet_keys, "undefined"
+    assert (('BEGIN' in sheet_keys) or
+            ('START' in sheet_keys)) and 'END' in sheet_keys, "undefined"
     time_list = []
     for _ in sheet['BEGIN'].keys():
         delta = sheet['END'][_] - sheet['BEGIN'][_]
@@ -39,6 +41,21 @@ def diff_time_list(sheet, type='days'):
             sheet['BEGIN'][_] + timedelta(days=i)
             for i in range(delta.days + 1)
         ])
+    return time_list
+
+
+def convert_iso_to_timestamp(iso_str):
+    daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+    # time = time.timestamp()
+    # import ipdb
+    # ipdb.set_trace()
+    return daterinos
+
+
+def days_between_dates(start, end):
+    assert end > start, "end before start"
+    delta = end - start
+    time_list = [start + timedelta(days=i) for i in range(delta.days + 1)]
     return time_list
 
 
