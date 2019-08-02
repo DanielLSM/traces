@@ -174,8 +174,11 @@ def book_to_kwargs_output(book_output):
     dfc = book_output['C-CHECK LIST']
     aircrafts = (dfc['A/C TAIL'].unique()).tolist()
     c_checks = OrderedDict()
+    c_checks_days = OrderedDict()
+
     for _ in aircrafts:
         c_checks[_] = OrderedDict()
+        c_checks_days[_] = []
 
     for idx in range(len(dfc['A/C TAIL'])):
         aircraft = dfc['A/C TAIL'][idx]
@@ -185,14 +188,16 @@ def book_to_kwargs_output(book_output):
         days = days_between_dates(start_day, end_day)
         assert c_check_code not in c_checks[aircraft].keys()
         c_checks[aircraft][c_check_code] = days
-
-    return {'c-checks': c_checks}
+        c_checks_days[aircraft].extend(days)
+        # import ipdb
+        # ipdb.set_trace()
+    return {'c-checks': c_checks, 'c-checks-days': c_checks_days}
 
 
 def book_to_kwargs(book_checks, book_tasks, book_output):
     kwargs = book_to_kwargs_MPO(book_checks)
-    kwargs_tasks = book_to_kwargs_tasks(book_tasks)
-    kwargs.update(kwargs_tasks)
+    # kwargs_tasks = book_to_kwargs_tasks(book_tasks)
+    # kwargs.update(kwargs_tasks)
     kwargs_output = book_to_kwargs_output(book_output)
     kwargs.update(kwargs_output)
     return kwargs
@@ -207,5 +212,5 @@ if __name__ == '__main__':
         raise e
 
     book_to_kwargs_output(book_output)
-    # kwargs = book_to_kwargs(book_checks, book_tasks)
+    # kwargs = book_to_kwargs(book_checks, book_tasks,book_output)
     # kwargs = book_to_kwargs_output(book_output)

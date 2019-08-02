@@ -34,8 +34,11 @@ class SchedulerEDF(FleetManagerBase):
         FleetManagerBase.__init__(self, **kwargs)
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
-        self.global_schedule = self._set_global_schedule(self.initial_context)
+        self.global_schedule = self._set_global_schedule()
+        self.restrict_calendar_c_checks()
         self.plan_maintenance_opportunities()
+        import ipdb
+        ipdb.set_trace()
         # save_pickle(self.global_schedule, "checks.pkl")
         # self.global_schedule = load_pickle('checks.pkl')
         # self.pre_process_tasks()
@@ -43,11 +46,14 @@ class SchedulerEDF(FleetManagerBase):
         # self.save_checks_to_xlsx()
         # self.save_tasks_to_xlsx()
 
-    @staticmethod
-    def _set_global_schedule(context):
+    def _set_global_schedule(self):
         global_schedule = OrderedDict()
-        for aircraft in context.keys():
+        for aircraft in self.initial_context.keys():
             global_schedule[aircraft] = {}
+            if aircraft in self.kwargs_c_checks.keys():
+                global_schedule[aircraft].update({'c_checks' : self.kwargs_c_checks[aircraft]})
+                global_schedule[aircraft].update({'c_check_days' : self.kwargs_c_checks_days[aircraft]})
+                
             global_schedule[aircraft]['last_due_dates'] = []
             global_schedule[aircraft]['assigned_dates'] = []
             global_schedule[aircraft]['due_dates'] = []
@@ -191,6 +197,9 @@ class SchedulerEDF(FleetManagerBase):
         context = self.initial_context
         while not self.is_context_done(context):
             csp_vars = self.cspify(context)
+            # import ipdb
+            # ipdb.set_trace()
+            assert self.check_feasibility(csp_vars)
             assignment, tree = solve_csp_schedule(csp_vars)
             self.full_tree.append(tree)
             assignment_dict = assignment.assignment
@@ -206,6 +215,41 @@ class SchedulerEDF(FleetManagerBase):
             self._add_to_global_schedule(schedule_partial)
             context = self.compute_next_context(schedule_partial,
                                                 self.end_date)
+        print("INFO: Finished planning maintenance opportunities")
+
+    def restrict_calendar_c_checks(self):
+        for aircraft in self.global_schedule.keys():
+            if 'c_checks' in self.global_schedule[aircraft].keys():
+                for c_check_code in self.global_schedule[aircraft]['c_checks'].keys():
+                    for c_check_date in self.global_schedule[aircraft]['c_checks'][c_check_code]:
+                        self.calendar.calendar[c_check_date]['resources']['slots']['c-type'] -= 1
+                        # print(self.calendar.calendar[c_check_date]['allowed']['a-type'])
+                        # import ipdb; ipdb.set_trace()
+                        # self.calendar.calendar[c_check_date]['allowed']['a-type']= False
+
+    def check_feasibility(self, csp_vars):
+        aircrafts = []
+        sloterinos = {}
+        for aircraft, aircraft_domain in csp_vars.vars_domain.items():
+            aircrafts.append(aircraft)
+            for _ in aircraft_domain:
+                if _ not in sloterinos.keys():
+                    sloterinos[_] = 1 
+                else:
+                    sloterinos[_] += 1
+        aircrafts_domain_size = 0
+
+        for key in sloterinos.keys():
+            aircrafts_domain_size += sloterinos[_]
+
+        try:
+            feasibility = (len(aircraft_domain_size) >= len(aircrafts))        
+            assert feasibility
+        except:
+            import ipdb
+            ipdb.set_trace()
+
+        return feasibility
 
     def restrict_calendar(self, assignment):
         check_types = ['a-type', 'c-type']
@@ -220,14 +264,14 @@ class SchedulerEDF(FleetManagerBase):
             context.items(),
             key=lambda kv: kv[1]['A_INITIAL']['due_date'].timestamp(),
             reverse=True)
-        sorted_dict = OrderedDict(sorted_x)
+        variables = OrderedDict(sorted_x)
 
         ordered_vars = []
-        for key in sorted_dict:
-            start_date = sorted_dict[key]['A_INITIAL']['assigned_date']
-            end_date = sorted_dict[key]['A_INITIAL']['due_date']
-            domain = self.get_domain(start_date, end_date, key=key)
-            var = Variable(name=key, domain=domain)
+        for variable in variables:
+            start_date = variables[variable]['A_INITIAL']['assigned_date']
+            end_date = variables[variable]['A_INITIAL']['due_date']
+            domain = self.get_domain(start_date, end_date, variable=variable)
+            var = Variable(name=variable, domain=domain)
             ordered_vars.append(var)
 
         assignment = Assignment(ordered_vars)
@@ -242,7 +286,18 @@ class SchedulerEDF(FleetManagerBase):
         max_slots = max(slots)
         return max_slots
 
-    def get_domain(self, date_start, date_end, check_type='a-type', key=None):
+    def get_domain(self, date_start, date_end, check_type='a-type', variable=None):
+        if 'c_check_days' in self.global_schedule[variable].keys(): 
+            if date_end in self.global_schedule[variable]['c_check_days']:
+                # import ipdb;
+                # ipdb.set_trace()
+                for code in self.global_schedule[variable]['c_checks'].keys():
+                    if date_end in self.global_schedule[variable]['c_checks'][code]:
+                        domain = list(self.global_schedule[variable]['c_checks'][code])[-1]
+                        # import ipdb;
+                        # ipdb.set_trace()
+                        return [domain]
+      
         domain = []
         domain.append(date_start)
         due_date = date_start
@@ -250,9 +305,11 @@ class SchedulerEDF(FleetManagerBase):
             if self.calendar.calendar[due_date]['allowed'][
                     'public holidays'] and self.calendar.calendar[due_date][
                         'allowed']['a-type']:
-                for _ in range(self.get_max_slots(due_date, key)):
+                for _ in range(self.get_max_slots(due_date, variable)):
                     domain.append(due_date)
             due_date = advance_date(due_date, days=int(1))
+        assert len(domain)!=0
+
         return domain
 
     def is_context_done(self, context):
@@ -385,6 +442,7 @@ class SchedulerEDF(FleetManagerBase):
                             maxDY=maxDY,
                             maxFH=maxFH,
                             maxFC=maxFC)
+                
         return due_dates
 
     def compute_next_context(self,
@@ -635,15 +693,17 @@ class SchedulerEDF(FleetManagerBase):
 if __name__ == '__main__':
 
     import time
-    from resources import f1_in_checks, f1_in_tasks
+    from resources import f1_in_checks, f1_in_tasks, f2_out
 
     t = time.time()
     try:
         book_checks = excel_to_book(f1_in_checks)
-        book_tasks = excel_to_book(f1_in_tasks)
+        # book_tasks = excel_to_book(f1_in_tasks)
+        book_tasks = 0
+        book_output = excel_to_book(f2_out)
     except Exception as e:
         raise e
 
-    kwargs = book_to_kwargs(book_checks, book_tasks)
+    kwargs = book_to_kwargs(book_checks, book_tasks, book_output)
     scheduler = SchedulerEDF(**kwargs)
     print("INFO: total elapsed time {} seconds".format(time.time() - t))
