@@ -131,16 +131,12 @@ class SchedulerEDF(FleetManagerBase):
                     item_idxs = df[(df['A/C'] == aircraft) & (
                         df['ITEM'] == item)].index.values.astype(int)
                     # item_idxs = item_idxs.tolist()
-                    # import ipdb
-                    # ipdb.set_trace()
                     assert len(item_idxs) != 0
                     refs = df['REF TAP'][item_idxs].tolist()
                     descriptions = df['DESCRIPTION'][item_idxs].tolist()
                     blocks = df['BLOCK'][item_idxs].tolist()
                     skills = df['SKILL'][item_idxs].tolist()
                     taskbblock = df['TASK BY BLOCK'][item_idxs].tolist()
-                    # import ipdb
-                    # ipdb.set_trace()
                     for _ in range(len(refs)):
                         dict1['A/C ID'].append(aircraft)
                         dict1['MAINTENANCE OPPORTUNITY'].append(
@@ -720,8 +716,6 @@ class SchedulerEDF(FleetManagerBase):
 
         days = round(min(delta_FC / dfc, delta_FH / dfh))
         due_date = advance_date(due_date, days=int(days))
-        # import ipdb
-        # ipdb.set_trace()
 
         # while current_FC < delta_FC and current_FC < delta_FH:
         #     month = (due_date.month_name()[0:3]).upper()
