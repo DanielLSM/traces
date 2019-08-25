@@ -8,8 +8,15 @@ from tqdm import tqdm
 class TreeDaysPlanner:
     def __init__(self, calendar, fleet):
         self.calendar = calendar
-        self.calendar_tree = Tree()  #calendar tree with data as fleet_state
         self.fleet = fleet
+
+        self.calendar_tree = Tree()  #calendar tree with data as fleet_state
+        self.optimized_calendar_simplified = OrderedDict(
+        )  #current optimized calendar
+        self.current_schedule_counter = 0
+        self.all_schedules = deque(
+            maxlen=100)  #maintain only the top 100 schedules
+
         self.fleet_state = self.__build_fleet_state()
         self.fleet_state = self.__order_fleet_state()
 
@@ -56,20 +63,53 @@ class TreeDaysPlanner:
                    key=lambda x: x[1]['TOTAL-RATIO'],
                    reverse=True))
 
-    def enumerate_all_schedules(self):
+    def optimize(self):
 
-        #current optimized calendar being built
-        optimized_calendar_simplified = OrderedDict()
-        current_schedule_counter = 0
+        for day in self.calendar.keys():
 
-        #lets use a deque here, we want to maintain only the top 100 schedules
-        all_schedules = deque(maxlen=100)
+            pass
 
         import ipdb
         ipdb.set_trace()
 
-        for day in self.calendar.keys():
-            pass
+    #exceptions is a list of aircrafts that is in maintenance, thus not operating
+    def fleet_operate_one_day(self, fleet_state, date, on_maintenance=[]):
+        for aircraft in fleet_state.keys():
+            if aircraft in on_maintenance:
+                fleet_state[key]['DY-A'] = 0
+                fleet_state[key]['FH-A'] = 0
+                fleet_state[key]['FC-A'] = 0
+                fleet_state[key]['OPERATING'] = False
+            else:
+                fleet_state[key]['DY-A'] += 1
+                fleet_state[key]['FH-A'] += fleet_state[key]['DFH']
+                fleet_state[key]['FC-A'] += fleet_state[key]['DFC']
+                fleet_state[key]['OPERATING'] = True
+
+            fleet_state[key]['DY-A-RATIO'] = fleet_state[key][
+                'DY-A'] / fleet_state[key]['DY-A-MAX']
+            fleet_state[key]['FH-A-RATIO'] = fleet_state[key][
+                'FH-A'] / fleet_state[key]['FH-A-MAX']
+            fleet_state[key]['FC-A-RATIO'] = fleet_state[key][
+                'FC-A'] / fleet_state[key]['FC-A-MAX']
+            fleet_state[key]['TOTAL-RATIO'] = max([
+                fleet_state[key]['DY-A-RATIO'], fleet_state[key]['FH-A-RATIO'],
+                fleet_state[key]['FC-A-RATIO']
+            ])
+            fleet_state[key]['DY-A-WASTE'] = fleet_state[key][
+                'DY-A-MAX'] - fleet_state[key]['DY-A']
+            fleet_state[key]['FH-A-WASTE'] = fleet_state[key][
+                'FH-A-MAX'] - fleet_state[key]['FH-A']
+            fleet_state[key]['FC-A-WASTE'] = fleet_state[key][
+                'FC-A-MAX'] - fleet_state[key]['FC-A']
+        return fleet_state
+
+    def check_safety_fleet(self):
+        pass
+
+    def monte_carlo_greedy(self):
+        pass
+        return schedule
 
 
 class BacktrackTreelib:
@@ -105,13 +145,3 @@ class NodeSchedule(treelib.Node):
         self.action_var = action_var
         self.action_value = action_value
         self.count = 0
-
-
-#then you can transition only the operating aircrafts
-def transition_one_day(aircraft_state):
-    pass
-
-
-def monte_carlo_greedy(fleet_state, calendar):
-    pass
-    return schedule

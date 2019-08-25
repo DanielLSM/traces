@@ -61,7 +61,7 @@ class SchedulerEDF(FleetManagerBase):
         # fleet_info = self.fleet.aircraft_info[aircraft]['A_INITIAL'][
         #     checks['A_INITIAL']['max-days']]
         self.optimizer = TreeDaysPlanner(calendar, fleet)
-        all_schedules = self.optimizer.enumerate_all_schedules()
+        all_schedules = self.optimizer.optimize()
 
     def _set_global_schedule(self):
         global_schedule = OrderedDict()
