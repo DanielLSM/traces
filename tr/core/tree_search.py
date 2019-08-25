@@ -1,8 +1,10 @@
 import treelib
 
-from collections import OrderedDict, deque
 from treelib import Tree
 from tqdm import tqdm
+from collections import OrderedDict, deque
+
+from tr.core.utils import advance_date
 
 
 class TreeDaysPlanner:
@@ -13,7 +15,7 @@ class TreeDaysPlanner:
         self.calendar_tree = Tree()  #calendar tree with data as fleet_state
         self.optimized_calendar_simplified = OrderedDict(
         )  #current optimized calendar
-        self.current_schedule_counter = 0
+        self.schedule_counter = 0
         self.all_schedules = deque(
             maxlen=100)  #maintain only the top 100 schedules
 
@@ -63,12 +65,49 @@ class TreeDaysPlanner:
                    key=lambda x: x[1]['TOTAL-RATIO'],
                    reverse=True))
 
+    #here we could implment CSP backtrack... cause a 1 day check is prolly not enough
+    #TODO: Need to make backtracking (DFS), yet again...
+    #IF NOT MAINTENANCE IS NOT VALID, BUT DOING ALWAYS MIANTENANCE IS, JUST DO MAINTENANCE
+    #AND TEST AGAIN, BUT MIGHT BE THAT IT WOULDVE BEEN VALID IF WITH MAINTENANCE BEFORE,
+    #SO WE NEED BACKTRACK,
+    #ALSO IF YOU HAD TO DO MAINTENANCE AGAIN, DONT COMPUTE GREEDY AGAIN.. IS THIS SAME
+    #SCHEDULE, IF, ALTHOUGH, YOU DID A NO MAINTENANCE DAY, YOU CAN GO GREEDY AGAIN,
+    #WAIT, IF GREEDY FAILS IT DOESNT MEAN IT HAS TO STOP, IT MEANS THAT PERHAPS SOME NON-MAINTENANCE
+    #WERE TOO MUCH
+
+    #YOU CAN ALSO PUT, IF SOMETHING IS ABOVE 95% UTILIZATION, THEN, DO MAINTENANCE
+    #YOU CAN ALSO DO MAINTENANCE ON THE LEAST DOMAIN ONES, IF YOU COMPUTE DUE DATES
     def optimize(self):
-
         for day in self.calendar.keys():
+            slots = self.get_slots(day, check_type='a-type')
+            self.optimized_calendar_simplified[day] = {}
+            self.optimized_calendar_simplified[day]['SLOTS'] = slots
+            self.optimized_calendar_simplified[day][
+                'FLEET-STATE'] = self.fleet_state
+            schedule, valid = self.run_monte_carlo_greedy()
+            if valid:
+                self.all_schedules.appendleft(schedule)
+            else:
+                print("stopped optimizing at day {}".format(day))
+                break
 
-            pass
+            #This piece of code, until line 95 is just a
+            #one look ahead
+            on_maintenance = []
+            fleet_state = self.fleet_operate_one_day(self.fleet_state, day,
+                                                     on_maintenance)
+            valid = self.check_safety_fleet(fleet_state)
+            if not valid:
+                on_maintenance = list(fleet_state.keys())[0:slots]
+                fleet_state = self.fleet_operate_one_day(
+                    self.fleet_state, day, on_maintenance)
+                valid = self.check_safety_fleet(fleet_state)
+                if valid:
+                    self.fleet_state = fleet_state
+            day = advance_date(day, days=int(1))
 
+        print("INFO: Calendar optimized, best schedule found from {}".format(
+            self.schedule_counter))
         import ipdb
         ipdb.set_trace()
 
@@ -82,8 +121,9 @@ class TreeDaysPlanner:
                 fleet_state[key]['OPERATING'] = False
             else:
                 fleet_state[key]['DY-A'] += 1
-                fleet_state[key]['FH-A'] += fleet_state[key]['DFH']
-                fleet_state[key]['FC-A'] += fleet_state[key]['DFC']
+                month = (date.month_name()[0:3]).upper()
+                fleet_state[key]['FH-A'] += fleet_state[key]['DFH'][month]
+                fleet_state[key]['FC-A'] += fleet_state[key]['DFC'][month]
                 fleet_state[key]['OPERATING'] = True
 
             fleet_state[key]['DY-A-RATIO'] = fleet_state[key][
@@ -104,12 +144,54 @@ class TreeDaysPlanner:
                 'FC-A-MAX'] - fleet_state[key]['FC-A']
         return fleet_state
 
-    def check_safety_fleet(self):
-        pass
+    def check_safety_fleet(self, fleet_state):
+        for key in fleet_state.keys():
+            if fleet_state[key]['TOTAL-RATIO'] > 1:
+                return False
+        return True
 
-    def monte_carlo_greedy(self):
-        pass
-        return schedule
+    #put always in maintenance depending on the number of slots
+    def run_monte_carlo_greedy(self):
+        fleet_state = self.fleet_state
+        optimized_calendar_simplified = self.optimized_calendar_simplified
+        day = list(optimized_calendar_simplified.keys())[-1]
+        slots = self.get_slots(day)
+        on_maintenance = list(fleet_state.keys())[0:slots]
+
+        while valid and day <= self.calendar.end_date:
+            fleet_state = self.fleet_operate_one_day(fleet_state, day,
+                                                     on_maintenance)
+            fleet_state = self.__order_fleet_state(fleet_state)
+
+            valid = check_safety_fleet(fleet_state)
+            day = advance_date(day, days=int(1))
+
+            slots = self.get_slots(day)
+            on_maintenance = list(fleet_state.keys())[0:slots]
+
+            optimized_calendar_simplified[day] = {}
+            optimized_calendar_simplified[day]['SLOTS'] = slots
+            optimized_calendar_simplified[day]['FLEET-STATE'] = fleet_state
+
+        return schedule, valid
+
+    def get_slots(self, date, check_type='a-type'):
+
+        # check_types = ['a-type', 'c-type']
+        # slots = [
+        #     self.calendar.calendar[date]['resources']['slots'][check]
+        #     for check in check_types
+        # ]
+        # max_slots = max(slots)
+
+        check_types = ['a-type', 'c-type']
+        # slots = [
+        #     self.calendar.calendar[date]['resources']['slots'][check]
+        #     for check in check_types
+        # ]
+
+        slots = self.calendar.calendar[date]['resources']['slots'][check_type]
+        return slots
 
 
 class BacktrackTreelib:
