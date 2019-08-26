@@ -59,7 +59,7 @@ class SchedulerEDF(FleetManagerBase):
         calendar = self.calendar
         fleet = self.fleet
         self.optimizer = TreeDaysPlanner(calendar, fleet)
-        all_schedules = self.optimizer.optimize()
+        all_schedules = self.optimizer.solve_schedule()
 
     def _set_global_schedule(self):
         global_schedule = OrderedDict()
