@@ -229,14 +229,15 @@ class TreeDaysPlanner:
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
-        slots = self.get_slots(day)
+        slots = self.get_slots(day) + 30
         calendar[day] = {}
         for action_value in maintenance_actions:
             if not action_value:
                 on_maintenance = []
-                fleet_state = self.fleet_operate_one_day(
+                fleet_state_0 = self.fleet_operate_one_day(
                     fleet_state, day_old, on_maintenance)
-                valid = self.check_safety_fleet(fleet_state)
+                fleet_state_0 = self.__order_fleet_state(fleet_state_0)
+                valid = self.check_safety_fleet(fleet_state_0)
                 if valid:
                     calendar[day]['SLOTS'] = slots
                     calendar[day]['MAINTENANCE'] = False
@@ -244,7 +245,7 @@ class TreeDaysPlanner:
                     childs.append(
                         NodeScheduleDays(calendar,
                                          day,
-                                         fleet_state,
+                                         fleet_state_0,
                                          action_value,
                                          assignment=on_maintenance))
                     # childs.append(child)
@@ -254,9 +255,13 @@ class TreeDaysPlanner:
                 on_maintenance = list(fleet_state.keys())[0:slots]
                 import ipdb
                 ipdb.set_trace()
-                fleet_state = self.fleet_operate_one_day(
+                fleet_state_1 = self.fleet_operate_one_day(
                     fleet_state, day_old, on_maintenance)
-                valid = self.check_safety_fleet(fleet_state)
+                fleet_state_1 = self.__order_fleet_state(fleet_state_1)
+                valid = self.check_safety_fleet(fleet_state_1)
+                import ipdb
+                ipdb.set_trace()
+
                 if valid:
                     calendar[day]['SLOTS'] = slots
                     calendar[day]['MAINTENANCE'] = True
@@ -264,7 +269,7 @@ class TreeDaysPlanner:
                     childs.append(
                         NodeScheduleDays(calendar,
                                          day,
-                                         fleet_state,
+                                         fleet_state_1,
                                          action_value,
                                          assignment=on_maintenance))
 
