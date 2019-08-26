@@ -14,7 +14,7 @@ class TreeDaysPlanner:
         self.calendar = calendar
         self.fleet = fleet
         self.fleet_state = self.__build_fleet_state()
-        self.fleet_state = self.__order_fleet_state()
+        self.fleet_state = self.order_fleet_state(self.fleet_state)
 
         self.calendar_tree = Tree()  #calendar tree with data as fleet_state
         self.calendar_simplified = OrderedDict()  #current optimized calendar
@@ -31,9 +31,6 @@ class TreeDaysPlanner:
         self.schedule_counter = 0
         self.all_schedules = deque(
             maxlen=100)  #maintain only the top 100 schedules
-
-        self.fleet_state = self.__build_fleet_state()
-        self.fleet_state = self.__order_fleet_state()
 
     def __build_fleet_state(self):
         fleet_state = OrderedDict()
@@ -72,9 +69,9 @@ class TreeDaysPlanner:
             fleet_state[key]['OPERATING'] = True
         return fleet_state
 
-    def __order_fleet_state(self):
+    def order_fleet_state(self, fleet_state):
         return OrderedDict(
-            sorted(self.fleet_state.items(),
+            sorted(fleet_state.items(),
                    key=lambda x: x[1]['TOTAL-RATIO'],
                    reverse=True))
 
@@ -162,7 +159,7 @@ class TreeDaysPlanner:
 
     def check_safety_fleet(self, fleet_state):
         for key in fleet_state.keys():
-            if fleet_state[key]['TOTAL-RATIO'] >= 100:
+            if fleet_state[key]['TOTAL-RATIO'] >= 1:
                 return False
         return True
 
@@ -187,7 +184,7 @@ class TreeDaysPlanner:
         while valid and day <= self.calendar.end_date:
             fleet_state = self.fleet_operate_one_day(fleet_state, day,
                                                      on_maintenance)
-            fleet_state = self.__order_fleet_state(fleet_state)
+            fleet_state = self.order_fleet_state(fleet_state)
 
             valid = self.check_safety_fleet(fleet_state)
             day = advance_date(day, days=int(1))
@@ -229,14 +226,14 @@ class TreeDaysPlanner:
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
-        slots = self.get_slots(day) + 30
+        slots = self.get_slots(day) + 10
         calendar[day] = {}
         for action_value in maintenance_actions:
             if not action_value:
                 on_maintenance = []
                 fleet_state_0 = self.fleet_operate_one_day(
                     fleet_state, day_old, on_maintenance)
-                fleet_state_0 = self.__order_fleet_state(fleet_state_0)
+                fleet_state_0 = self.order_fleet_state(fleet_state_0)
                 valid = self.check_safety_fleet(fleet_state_0)
                 if valid:
                     calendar[day]['SLOTS'] = slots
@@ -253,15 +250,10 @@ class TreeDaysPlanner:
                     'public holidays'] and self.calendar.calendar[day][
                         'allowed']['a-type']:
                 on_maintenance = list(fleet_state.keys())[0:slots]
-                import ipdb
-                ipdb.set_trace()
                 fleet_state_1 = self.fleet_operate_one_day(
                     fleet_state, day_old, on_maintenance)
-                fleet_state_1 = self.__order_fleet_state(fleet_state_1)
+                fleet_state_1 = self.order_fleet_state(fleet_state_1)
                 valid = self.check_safety_fleet(fleet_state_1)
-                import ipdb
-                ipdb.set_trace()
-
                 if valid:
                     calendar[day]['SLOTS'] = slots
                     calendar[day]['MAINTENANCE'] = True
@@ -273,28 +265,14 @@ class TreeDaysPlanner:
                                          action_value,
                                          assignment=on_maintenance))
 
+        if not valid:
+            import ipdb
+            ipdb.set_trace()
+        import ipdb
+        ipdb.set_trace()
         return childs
-        # return [
-        #     self.child_node(csp, assignment, action_var, action_value)
-        #     for action_value in assignment.vars_domain[action_var]
-        # ]
 
-        # def expand_with_heuristic(self, csp, node_schedule, action_var):
-        #     childs = []
-        #     for action_value in csp.select_next_values(node_schedule.assignment,
-        #                                                action_var):
-        #         child = self.child_node(csp, node_schedule, action_var,
-        #                                 action_value)
-        #         if child != None and len(childs) == 0:
-        #             childs.append(child)
-        #         elif child != None and child.tag != childs[-1].tag:
-        #             childs.append(child)
-
-        # aux = [child.tag for child in childs]
-        # import ipdb
-        # ipdb.set_trace()
-        # return childs
-    def solve(self, node_schedule, limit=2):
+    def solve(self, node_schedule, limit=5):
         if self.check_solved(node_schedule.calendar):
             return node_schedule
 
@@ -327,24 +305,7 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    # def child_node(self, csp, node_schedule, action_var, action_value):
-    #     next_assignment = csp.do_next_assignment(node_schedule.assignment,
-    #                                              action_var, action_value)
-    #     if next_assignment != None:
-    #         return NodeSchedule(next_assignment,
-    #                             action_var=action_var,
-    #                             action_value=action_value,
-    #                             pai=node_schedule.identifier)
-    #     return None
-
     def solve_schedule(self):
-        # csp_problem = CSPSchedule(assignment_start.vars)
-        # backtrack = BacktrackTreelib(csp_problem, assignment_start)
-        # # import ipdb
-        # # ipdb.set_trace()
-        # root = backtrack.tree.get_node(backtrack.tree.root)
-        # result = backtrack.solve(root)
-        # ipdb.set_trace()
         result = self.solve(self.root)
         import ipdb
         ipdb.set_trace()
