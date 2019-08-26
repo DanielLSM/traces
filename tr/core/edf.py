@@ -38,7 +38,7 @@ class SchedulerEDF(FleetManagerBase):
         self.full_tree = []
         self.initial_context = self._compute_inital_context()
         self.global_schedule = self._set_global_schedule()
-        self.restrict_calendar_c_checks()
+        # self.restrict_calendar_c_checks()
         # self.calendar.calendar[c_check_date]['allowed']['a-type']= False
 
         iso_str = '01/10/2020'
@@ -56,10 +56,8 @@ class SchedulerEDF(FleetManagerBase):
         # self.save_tasks_to_xlsx()
 
     def plan_by_days(self):
-        calendar = self.calendar.calendar
+        calendar = self.calendar
         fleet = self.fleet
-        # fleet_info = self.fleet.aircraft_info[aircraft]['A_INITIAL'][
-        #     checks['A_INITIAL']['max-days']]
         self.optimizer = TreeDaysPlanner(calendar, fleet)
         all_schedules = self.optimizer.optimize()
 
@@ -67,11 +65,11 @@ class SchedulerEDF(FleetManagerBase):
         global_schedule = OrderedDict()
         for aircraft in self.initial_context.keys():
             global_schedule[aircraft] = {}
-            if aircraft in self.kwargs_c_checks.keys():
-                global_schedule[aircraft].update(
-                    {'c_checks': self.kwargs_c_checks[aircraft]})
-                global_schedule[aircraft].update(
-                    {'c_check_days': self.kwargs_c_checks_days[aircraft]})
+            # if aircraft in self.kwargs_c_checks.keys():
+            #     global_schedule[aircraft].update(
+            #         {'c_checks': self.kwargs_c_checks[aircraft]})
+            #     global_schedule[aircraft].update(
+            #         {'c_check_days': self.kwargs_c_checks_days[aircraft]})
 
             global_schedule[aircraft]['last_due_dates'] = []
             global_schedule[aircraft]['assigned_dates'] = []
@@ -755,7 +753,9 @@ if __name__ == '__main__':
         book_checks = excel_to_book(f1_in_checks)
         # book_tasks = excel_to_book(f1_in_tasks)
         book_tasks = 0
-        book_output = excel_to_book(f2_out)
+        # book_output = excel_to_book(f2_out)
+        book_output = 0
+
     except Exception as e:
         raise e
 

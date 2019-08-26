@@ -194,20 +194,20 @@ def book_to_kwargs_output(book_output):
     return {'c-checks': c_checks, 'c-checks-days': c_checks_days}
 
 
-def book_to_kwargs(book_checks, book_tasks, book_output):
+def book_to_kwargs(book_checks, book_tasks=0, book_output=0):
     kwargs = book_to_kwargs_MPO(book_checks)
     # kwargs_tasks = book_to_kwargs_tasks(book_tasks)
     # kwargs.update(kwargs_tasks)
-    kwargs_output = book_to_kwargs_output(book_output)
-    kwargs.update(kwargs_output)
+    # kwargs_output = book_to_kwargs_output(book_output)
+    # kwargs.update(kwargs_output)
     return kwargs
 
 
 if __name__ == '__main__':
     try:
-        # book_checks = excel_to_book(f1_in_checks)
+        book_checks = excel_to_book(f1_in_checks)
         # book_tasks = excel_to_book(f1_in_tasks)
-        book_output = excel_to_book(f2_out)
+        # book_output = excel_to_book(f2_out)
     except Exception as e:
         raise e
 

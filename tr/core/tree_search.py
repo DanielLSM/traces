@@ -78,7 +78,7 @@ class TreeDaysPlanner:
     #YOU CAN ALSO PUT, IF SOMETHING IS ABOVE 95% UTILIZATION, THEN, DO MAINTENANCE
     #YOU CAN ALSO DO MAINTENANCE ON THE LEAST DOMAIN ONES, IF YOU COMPUTE DUE DATES
     def optimize(self):
-        for day in self.calendar.keys():
+        for day in self.calendar.calendar.keys():
             slots = self.get_slots(day, check_type='a-type')
             self.optimized_calendar_simplified[day] = {}
             self.optimized_calendar_simplified[day]['SLOTS'] = slots
@@ -105,11 +105,11 @@ class TreeDaysPlanner:
                 if valid:
                     self.fleet_state = fleet_state
             day = advance_date(day, days=int(1))
+            import ipdb
+            ipdb.set_trace()
 
         print("INFO: Calendar optimized, best schedule found from {}".format(
             self.schedule_counter))
-        import ipdb
-        ipdb.set_trace()
 
     #exceptions is a list of aircrafts that is in maintenance, thus not operating
     def fleet_operate_one_day(self, fleet_state, date, on_maintenance=[]):
@@ -153,17 +153,20 @@ class TreeDaysPlanner:
     #put always in maintenance depending on the number of slots
     def run_monte_carlo_greedy(self):
         fleet_state = self.fleet_state
+        valid = self.check_safety_fleet(fleet_state)
         optimized_calendar_simplified = self.optimized_calendar_simplified
         day = list(optimized_calendar_simplified.keys())[-1]
         slots = self.get_slots(day)
         on_maintenance = list(fleet_state.keys())[0:slots]
 
+        import ipdb
+        ipdb.set_trace()
         while valid and day <= self.calendar.end_date:
             fleet_state = self.fleet_operate_one_day(fleet_state, day,
                                                      on_maintenance)
             fleet_state = self.__order_fleet_state(fleet_state)
 
-            valid = check_safety_fleet(fleet_state)
+            valid = self.check_safety_fleet(fleet_state)
             day = advance_date(day, days=int(1))
 
             slots = self.get_slots(day)
@@ -191,24 +194,68 @@ class TreeDaysPlanner:
         # ]
 
         slots = self.calendar.calendar[date]['resources']['slots'][check_type]
+
         return slots
 
 
-class BacktrackTreelib:
+class BacktrackPlanDays:
     def __init__(self, csp, start_assign, *args, **kwargs):
-        assert isinstance(csp, CSPSchedule), "problem is not CSP"
-        assert isinstance(start_assign, Assignment), "assignment is not valid"
         self.csp = csp
         self.start_assign = start_assign
         self.tree = Tree()
         root = NodeSchedule(self.start_assign, tag="Root", identifier="root")
         self.tree.add_node(root)
 
+    def solve(self, node_schedule, limit=100):
+        if self.csp.satisfied_assignment(node_schedule.assignment):
+            return node_schedule
 
-class NodeSchedule(treelib.Node):
+        if limit == 0:
+            return "cutoff"
+
+        next_var = self.csp.select_next_var(node_schedule.assignment)
+        if next_var == None:
+            return None
+
+        cutoff = False
+        # here when we expand the childs, we need to fix domain
+        for child in node_schedule.expand_with_heuristic(
+                self.csp, node_schedule, next_var):
+            self.tree[node_schedule.identifier].count += 1
+            if self.tree[node_schedule.identifier].count > 1:
+                import ipdb
+                ipdb.set_trace()
+                # check_feasibility(self.start_assign)
+                assert False
+                print("BACKTRACKKKKKKKK")
+
+            self.tree.add_node(child, node_schedule)
+            # print("Depth:{}".format(self.tree.depth()))3
+
+            next_node = self.solve(child, limit - 1)
+            if next_node == "cutoff":
+                cutoff = True
+            elif next_node != None:
+                return next_node
+        return "cutoff" if cutoff else None
+
+
+#TODO you should be able to start from an assignment or a tree
+def solve_csp_schedule(assignment_start):
+    csp_problem = CSPSchedule(assignment_start.vars)
+    backtrack = BacktrackTreelib(csp_problem, assignment_start)
+    # import ipdb
+    # ipdb.set_trace()
+    root = backtrack.tree.get_node(backtrack.tree.root)
+    result = backtrack.solve(root)
+    # ipdb.set_trace()
+    return result.assignment, backtrack.tree
+
+
+class NodeScheduleDays(treelib.Node):
     def __init__(self,
                  assignment,
-                 action_var=None,
+                 day=None,
                  action_value=None,
                  tag=None,
                  identifier=None,
@@ -216,10 +263,17 @@ class NodeSchedule(treelib.Node):
                  *args,
                  **kwargs):
         if tag == None:
-            tag = "{}={}".format(action_var, action_value)
+            tag = day
+            # tag = ''
+            # for _ in assignment:
+            #     tag += '/{}'.format(_)
+            # tag = "{}={}".format(action_var, action_value)
         if identifier == None:
             # identifier = "{}={}_from_{}".format(action_var, action_value, pai)
-            identifier = "{}={}_from_{}".format(action_var, action_value, pai)
+            # identifier = "{}={}_from_{}".format(action_var, action_value, pai)
+            identifier = tag
+            for _ in assignment:
+                identifier += '/{}'.format(_)
 
         # print("Creating Node {}".format(tag))
         super().__init__(tag=tag, identifier=identifier, *args, **kwargs)

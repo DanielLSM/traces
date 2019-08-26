@@ -258,8 +258,8 @@ class FleetManagerBase:
                            **kwargs['aircraft_info'])
         # self.aircraft_tasks = kwargs['aircraft_tasks']
         # self.df_tasks = kwargs['df_tasks']
-        self.kwargs_c_checks = kwargs['c-checks']
-        self.kwargs_c_checks_days = kwargs['c-checks-days']
+        # self.kwargs_c_checks = kwargs['c-checks']
+        # self.kwargs_c_checks_days = kwargs['c-checks-days']
 
 
 if __name__ == '__main__':
