@@ -79,6 +79,12 @@ class TreeDaysPlanner:
     def fleet_operate_one_day(self, fleet_state, date, on_maintenance=[]):
         for aircraft in fleet_state.keys():
             if aircraft in on_maintenance:
+                fleet_state[aircraft]['DY-A-WASTE'] = fleet_state[aircraft][
+                    'DY-A-MAX'] - fleet_state[aircraft]['DY-A']
+                fleet_state[aircraft]['FH-A-WASTE'] = fleet_state[aircraft][
+                    'FH-A-MAX'] - fleet_state[aircraft]['FH-A']
+                fleet_state[aircraft]['FC-A-WASTE'] = fleet_state[aircraft][
+                    'FC-A-MAX'] - fleet_state[aircraft]['FC-A']
                 fleet_state[aircraft]['DY-A'] = 0
                 fleet_state[aircraft]['FH-A'] = 0
                 fleet_state[aircraft]['FC-A'] = 0
@@ -103,12 +109,6 @@ class TreeDaysPlanner:
                 fleet_state[aircraft]['FH-A-RATIO'],
                 fleet_state[aircraft]['FC-A-RATIO']
             ])
-            fleet_state[aircraft]['DY-A-WASTE'] = fleet_state[aircraft][
-                'DY-A-MAX'] - fleet_state[aircraft]['DY-A']
-            fleet_state[aircraft]['FH-A-WASTE'] = fleet_state[aircraft][
-                'FH-A-MAX'] - fleet_state[aircraft]['FH-A']
-            fleet_state[aircraft]['FC-A-WASTE'] = fleet_state[aircraft][
-                'FC-A-MAX'] - fleet_state[aircraft]['FC-A']
         return fleet_state
 
     def check_safety_fleet(self, fleet_state):
@@ -198,7 +198,7 @@ class TreeDaysPlanner:
                                          assignment=on_maintenance))
         return childs
 
-    def solve(self, node_schedule, limit=300):
+    def solve(self, node_schedule, limit=2):
         if self.check_solved(node_schedule.calendar):
             return node_schedule
 
@@ -255,6 +255,11 @@ class TreeDaysPlanner:
 
         return result
 
+    def calendar_score(self,node_schedule):
+        score_waste_DY = 0
+        score_waste_FH = 0
+        score_waste_FC = 0
+        for _
 
 #TODO you should be able to start from an assignment or a tree
 
