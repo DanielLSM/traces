@@ -6,7 +6,7 @@ from collections import OrderedDict, deque
 from copy import deepcopy
 from tr.core.utils import advance_date
 
-maintenance_actions = [0, 1]  #the order of this list reflects an heuristc btw
+maintenance_actions = [1, 0]  #the order of this list reflects an heuristc btw
 
 
 class TreeDaysPlanner:
@@ -198,7 +198,7 @@ class TreeDaysPlanner:
                                          assignment=on_maintenance))
         return childs
 
-    def solve(self, node_schedule, limit=2):
+    def solve(self, node_schedule, limit=300):
         if self.check_solved(node_schedule.calendar):
             return node_schedule
 
@@ -250,16 +250,35 @@ class TreeDaysPlanner:
         a1 = self.calendar_tree.all_nodes()
         for _ in a1[1].fleet_state.keys():
             print(a1[1].fleet_state[_]['TOTAL-RATIO'])
+
+        score = self.calendar_score(result)
+        self.calendar_tree.show(nid=result.identifier)
+        # optmized: (13261, 9134.300000000052, 103953.90000000001)
+        # non-optimized: (55577, 254913.6, 365113.99999999936)
+
         import ipdb
         ipdb.set_trace()
 
         return result
 
-    def calendar_score(self,node_schedule):
+    def calendar_score(self, node_schedule):
         score_waste_DY = 0
         score_waste_FH = 0
         score_waste_FC = 0
-        for _
+        all_transverse_nodes = self.calendar_tree.rsearch(
+            node_schedule.identifier)
+        for node_id in all_transverse_nodes:
+            node = self.calendar_tree[node_id]
+            for aircraft in node.fleet_state.keys():
+                if not node.fleet_state[aircraft]['OPERATING']:
+                    score_waste_DY += node_schedule.fleet_state[aircraft][
+                        'DY-A-WASTE']
+                    score_waste_FH += node_schedule.fleet_state[aircraft][
+                        'FH-A-WASTE']
+                    score_waste_FC += node_schedule.fleet_state[aircraft][
+                        'FC-A-WASTE']
+        return score_waste_DY, score_waste_FH, score_waste_FC
+
 
 #TODO you should be able to start from an assignment or a tree
 
