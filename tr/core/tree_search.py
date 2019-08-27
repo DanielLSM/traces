@@ -3,10 +3,10 @@ import treelib
 from treelib import Tree
 from tqdm import tqdm
 from collections import OrderedDict, deque
-
+from copy import deepcopy
 from tr.core.utils import advance_date
 
-maintenance_actions = [1, 0]  #the order of this list reflects an heuristc btw
+maintenance_actions = [0, 1]  #the order of this list reflects an heuristc btw
 
 
 class TreeDaysPlanner:
@@ -75,52 +75,6 @@ class TreeDaysPlanner:
                    key=lambda x: x[1]['TOTAL-RATIO'],
                    reverse=True))
 
-    #here we could implment CSP backtrack... cause a 1 day check is prolly not enough
-    #TODO: Need to make backtracking (DFS), yet again...
-    #IF NOT MAINTENANCE IS NOT VALID, BUT DOING ALWAYS MIANTENANCE IS, JUST DO MAINTENANCE
-    #AND TEST AGAIN, BUT MIGHT BE THAT IT WOULDVE BEEN VALID IF WITH MAINTENANCE BEFORE,
-    #SO WE NEED BACKTRACK,
-    #ALSO IF YOU HAD TO DO MAINTENANCE AGAIN, DONT COMPUTE GREEDY AGAIN.. IS THIS SAME
-    #SCHEDULE, IF, ALTHOUGH, YOU DID A NO MAINTENANCE DAY, YOU CAN GO GREEDY AGAIN,
-    #WAIT, IF GREEDY FAILS IT DOESNT MEAN IT HAS TO STOP, IT MEANS THAT PERHAPS SOME NON-MAINTENANCE
-    #WERE TOO MUCH
-
-    #YOU CAN ALSO PUT, IF SOMETHING IS ABOVE 95% UTILIZATION, THEN, DO MAINTENANCE
-    #YOU CAN ALSO DO MAINTENANCE ON THE LEAST DOMAIN ONES, IF YOU COMPUTE DUE DATES
-    def optimize(self):
-        for day in self.calendar.calendar.keys():
-            slots = self.get_slots(day, check_type='a-type')
-            self.optimized_calendar_simplified[day] = {}
-            self.optimized_calendar_simplified[day]['SLOTS'] = slots
-            self.optimized_calendar_simplified[day][
-                'FLEET-STATE'] = self.fleet_state
-            schedule, valid = self.run_monte_carlo_greedy()
-            if valid:
-                self.all_schedules.appendleft(schedule)
-            else:
-                print("stopped optimizing at day {}".format(day))
-                break
-
-            #This piece of code, until line 95 is just a
-            #one look ahead
-            on_maintenance = []
-            fleet_state = self.fleet_operate_one_day(self.fleet_state, day,
-                                                     on_maintenance)
-            valid = self.check_safety_fleet(fleet_state)
-            if not valid:
-                on_maintenance = list(fleet_state.keys())[0:slots]
-                fleet_state = self.fleet_operate_one_day(
-                    self.fleet_state, day, on_maintenance)
-                valid = self.check_safety_fleet(fleet_state)
-                if valid:
-                    self.fleet_state = fleet_state
-            day = advance_date(day, days=int(1))
-            import ipdb
-            ipdb.set_trace()
-
-        print("INFO: Calendar optimized, best schedule found from {}".format(
-            self.schedule_counter))
-
     #exceptions is a list of aircrafts that is in maintenance, thus not operating
     def fleet_operate_one_day(self, fleet_state, date, on_maintenance=[]):
         for aircraft in fleet_state.keys():
@@ -166,37 +120,10 @@ class TreeDaysPlanner:
     def check_solved(self, current_calendar):
         a = len(current_calendar)
         b = len(self.calendar.calendar)
+        b = len(range(300))
         if a >= b:
             return True
         return False
-
-    #put always in maintenance depending on the number of slots
-    def run_monte_carlo_greedy(self):
-        fleet_state = self.fleet_state
-        valid = self.check_safety_fleet(fleet_state)
-        optimized_calendar_simplified = self.optimized_calendar_simplified
-        day = list(optimized_calendar_simplified.keys())[-1]
-        slots = self.get_slots(day)
-        on_maintenance = list(fleet_state.keys())[0:slots]
-
-        import ipdb
-        ipdb.set_trace()
-        while valid and day <= self.calendar.end_date:
-            fleet_state = self.fleet_operate_one_day(fleet_state, day,
-                                                     on_maintenance)
-            fleet_state = self.order_fleet_state(fleet_state)
-
-            valid = self.check_safety_fleet(fleet_state)
-            day = advance_date(day, days=int(1))
-
-            slots = self.get_slots(day)
-            on_maintenance = list(fleet_state.keys())[0:slots]
-
-            optimized_calendar_simplified[day] = {}
-            optimized_calendar_simplified[day]['SLOTS'] = slots
-            optimized_calendar_simplified[day]['FLEET-STATE'] = fleet_state
-
-        return schedule, valid
 
     def get_slots(self, date, check_type='a-type'):
 
@@ -220,59 +147,58 @@ class TreeDaysPlanner:
 
     #there is no variables, just one bolean variable, do maintenance or not
     def expand_with_heuristic(self, node_schedule):
-        calendar = node_schedule.calendar
-        fleet_state = node_schedule.fleet_state
+        calendar_0 = deepcopy(node_schedule.calendar)
+        calendar_1 = deepcopy(node_schedule.calendar)
+        fleet_state_0 = deepcopy(node_schedule.fleet_state)
+        fleet_state_1 = deepcopy(node_schedule.fleet_state)
+
         day = node_schedule.day
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
-        slots = self.get_slots(day) + 10
-        calendar[day] = {}
+        slots = self.get_slots(day) + 2
+        calendar_0[day] = {}
+        calendar_1[day] = {}
+
         for action_value in maintenance_actions:
-            if not action_value:
-                on_maintenance = []
-                fleet_state_0 = self.fleet_operate_one_day(
-                    fleet_state, day_old, on_maintenance)
-                fleet_state_0 = self.order_fleet_state(fleet_state_0)
-                valid = self.check_safety_fleet(fleet_state_0)
-                if valid:
-                    calendar[day]['SLOTS'] = slots
-                    calendar[day]['MAINTENANCE'] = False
-                    calendar[day]['ASSIGNMENT'] = on_maintenance
-                    childs.append(
-                        NodeScheduleDays(calendar,
-                                         day,
-                                         fleet_state_0,
-                                         action_value,
-                                         assignment=on_maintenance))
-                    # childs.append(child)
             if action_value and self.calendar.calendar[day]['allowed'][
                     'public holidays'] and self.calendar.calendar[day][
                         'allowed']['a-type']:
-                on_maintenance = list(fleet_state.keys())[0:slots]
+                on_maintenance = list(fleet_state_1.keys())[0:slots]
                 fleet_state_1 = self.fleet_operate_one_day(
-                    fleet_state, day_old, on_maintenance)
+                    fleet_state_1, day_old, on_maintenance)
                 fleet_state_1 = self.order_fleet_state(fleet_state_1)
+
                 valid = self.check_safety_fleet(fleet_state_1)
                 if valid:
-                    calendar[day]['SLOTS'] = slots
-                    calendar[day]['MAINTENANCE'] = True
-                    calendar[day]['ASSIGNMENT'] = on_maintenance
+                    calendar_1[day]['SLOTS'] = slots
+                    calendar_1[day]['MAINTENANCE'] = True
+                    calendar_1[day]['ASSIGNMENT'] = on_maintenance
                     childs.append(
-                        NodeScheduleDays(calendar,
+                        NodeScheduleDays(calendar_1,
                                          day,
                                          fleet_state_1,
                                          action_value,
                                          assignment=on_maintenance))
-
-        if not valid:
-            import ipdb
-            ipdb.set_trace()
-        import ipdb
-        ipdb.set_trace()
+            if not action_value:
+                on_maintenance = []
+                fleet_state_0 = self.fleet_operate_one_day(
+                    fleet_state_0, day_old, on_maintenance)
+                fleet_state_0 = self.order_fleet_state(fleet_state_0)
+                valid = self.check_safety_fleet(fleet_state_0)
+                if valid:
+                    calendar_0[day]['SLOTS'] = slots
+                    calendar_0[day]['MAINTENANCE'] = False
+                    calendar_0[day]['ASSIGNMENT'] = on_maintenance
+                    childs.append(
+                        NodeScheduleDays(calendar_0,
+                                         day,
+                                         fleet_state_0,
+                                         action_value,
+                                         assignment=on_maintenance))
         return childs
 
-    def solve(self, node_schedule, limit=5):
+    def solve(self, node_schedule, limit=300):
         if self.check_solved(node_schedule.calendar):
             return node_schedule
 
@@ -294,9 +220,23 @@ class TreeDaysPlanner:
                 self.calendar_tree.add_node(child, node_schedule)
             except Exception as e:
                 print(e)
-                import ipdb
-                ipdb.set_trace()
             print("Depth:{}".format(self.calendar_tree.depth()))
+
+            # print(self.calendar_tree.all_nodes()[1])
+
+            # for _ in self.calendar_tree.all_nodes()[1].fleet_state.keys():
+            #     print(self.calendar_tree.all_nodes()[1].fleet_state[_]
+            #           ['TOTAL-RATIO'])
+            #     if self.calendar_tree.depth() > 1:
+            #         print(self.calendar_tree.all_nodes()[2].fleet_state[_]
+            #               ['TOTAL-RATIO'])
+            # print(self.calendar_tree.all_nodes()[1].identifier)
+            # print(self.calendar_tree.all_nodes()[1].day)
+            # if self.calendar_tree.depth() > 1:
+            #     print(self.calendar_tree.all_nodes()[2].day)
+
+            # import ipdb
+            # ipdb.set_trace()
 
             next_node = self.solve(child, limit - 1)
             if next_node == "cutoff":
@@ -307,51 +247,13 @@ class TreeDaysPlanner:
 
     def solve_schedule(self):
         result = self.solve(self.root)
+        a1 = self.calendar_tree.all_nodes()
+        for _ in a1[1].fleet_state.keys():
+            print(a1[1].fleet_state[_]['TOTAL-RATIO'])
         import ipdb
         ipdb.set_trace()
+
         return result
-
-
-class BacktrackPlanDays:
-    def __init__(self, csp, fleet_state, *args, **kwargs):
-        self.csp = csp
-        self.start_assign = start_assign
-        self.tree = Tree()
-        root = NodeSchedule(tag="Root", identifier="root")
-        self.tree.add_node(root)
-
-    def solve(self, node_schedule, limit=100):
-        if self.csp.satisfied_assignment(node_schedule.assignment):
-            return node_schedule
-
-        if limit == 0:
-            return "cutoff"
-
-        next_var = self.csp.select_next_var(node_schedule.assignment)
-        if next_var == None:
-            return None
-
-        cutoff = False
-        # here when we expand the childs, we need to fix domain
-        for child in node_schedule.expand_with_heuristic(
-                self.csp, node_schedule, next_var):
-            self.tree[node_schedule.identifier].count += 1
-            if self.tree[node_schedule.identifier].count > 1:
-                import ipdb
-                ipdb.set_trace()
-                # check_feasibility(self.start_assign)
-                assert False
-                print("BACKTRACKKKKKKKK")
-
-            self.tree.add_node(child, node_schedule)
-            # print("Depth:{}".format(self.tree.depth()))3
-
-            next_node = self.solve(child, limit - 1)
-            if next_node == "cutoff":
-                cutoff = True
-            elif next_node != None:
-                return next_node
-        return "cutoff" if cutoff else None
 
 
 #TODO you should be able to start from an assignment or a tree
@@ -387,3 +289,122 @@ class NodeScheduleDays(treelib.Node):
         self.assignment = assignment  #state of the world
         self.action_maintenance = action_maintenance
         self.count = 0
+
+    #put always in maintenance depending on the number of slots
+    # def run_monte_carlo_greedy(self):
+    #     fleet_state = self.fleet_state
+    #     valid = self.check_safety_fleet(fleet_state)
+    #     optimized_calendar_simplified = self.optimized_calendar_simplified
+    #     day = list(optimized_calendar_simplified.keys())[-1]
+    #     slots = self.get_slots(day) + 5
+    #     on_maintenance = list(fleet_state.keys())[0:slots]
+
+    #     import ipdb
+    #     ipdb.set_trace()
+    #     while valid and day <= self.calendar.end_date:
+    #         fleet_state = self.fleet_operate_one_day(fleet_state, day,
+    #                                                  on_maintenance)
+    #         fleet_state = self.order_fleet_state(fleet_state)
+
+    #         valid = self.check_safety_fleet(fleet_state)
+    #         day = advance_date(day, days=int(1))
+
+    #         slots = self.get_slots(day)
+    #         on_maintenance = list(fleet_state.keys())[0:slots]
+
+    #         optimized_calendar_simplified[day] = {}
+    #         optimized_calendar_simplified[day]['SLOTS'] = slots
+    #         optimized_calendar_simplified[day]['FLEET-STATE'] = fleet_state
+
+    #     return schedule, valid
+
+    #here we could implment CSP backtrack... cause a 1 day check is prolly not enough
+    #TODO: Need to make backtracking (DFS), yet again...
+    #IF NOT MAINTENANCE IS NOT VALID, BUT DOING ALWAYS MIANTENANCE IS, JUST DO MAINTENANCE
+    #AND TEST AGAIN, BUT MIGHT BE THAT IT WOULDVE BEEN VALID IF WITH MAINTENANCE BEFORE,
+    #SO WE NEED BACKTRACK,
+    #ALSO IF YOU HAD TO DO MAINTENANCE AGAIN, DONT COMPUTE GREEDY AGAIN.. IS THIS SAME
+    #SCHEDULE, IF, ALTHOUGH, YOU DID A NO MAINTENANCE DAY, YOU CAN GO GREEDY AGAIN,
+    #WAIT, IF GREEDY FAILS IT DOESNT MEAN IT HAS TO STOP, IT MEANS THAT PERHAPS SOME NON-MAINTENANCE
+    #WERE TOO MUCH
+
+    #YOU CAN ALSO PUT, IF SOMETHING IS ABOVE 95% UTILIZATION, THEN, DO MAINTENANCE
+    #YOU CAN ALSO DO MAINTENANCE ON THE LEAST DOMAIN ONES, IF YOU COMPUTE DUE DATES
+    # def optimize(self):
+    #     for day in self.calendar.calendar.keys():
+    #         slots = self.get_slots(day, check_type='a-type')
+    #         self.optimized_calendar_simplified[day] = {}
+    #         self.optimized_calendar_simplified[day]['SLOTS'] = slots
+    #         self.optimized_calendar_simplified[day][
+    #             'FLEET-STATE'] = self.fleet_state
+    #         schedule, valid = self.run_monte_carlo_greedy()
+    #         if valid:
+    #             self.all_schedules.appendleft(schedule)
+    #         else:
+    #             print("stopped optimizing at day {}".format(day))
+    #             break
+
+    #         #This piece of code, until line 95 is just a
+    #         #one look ahead
+    #         on_maintenance = []
+    #         fleet_state = self.fleet_operate_one_day(self.fleet_state, day,
+    #                                                  on_maintenance)
+    #         valid = self.check_safety_fleet(fleet_state)
+    #         if not valid:
+    #             on_maintenance = list(fleet_state.keys())[0:slots]
+    #             fleet_state = self.fleet_operate_one_day(
+    #                 self.fleet_state, day, on_maintenance)
+    #             valid = self.check_safety_fleet(fleet_state)
+    #             if valid:
+    #                 self.fleet_state = fleet_state
+    #         day = advance_date(day, days=int(1))
+    #     print("INFO: Calendar optimized, best schedule found from {}".format(
+    #         self.schedule_counter))
+
+
+# def expand_with_heuristic(self, node_schedule):
+#         calendar = node_schedule.calendar
+#         fleet_state = node_schedule.fleet_state
+#         day = node_schedule.day
+#         day_old = day
+#         childs = []
+#         day = advance_date(day, days=int(1))
+#         slots = self.get_slots(day) + 1
+#         calendar[day] = {}
+#         for action_value in maintenance_actions:
+#             if not action_value:
+#                 on_maintenance = []
+#                 fleet_state_0 = self.fleet_operate_one_day(
+#                     fleet_state, day_old, on_maintenance)
+#                 fleet_state_0 = self.order_fleet_state(fleet_state_0)
+#                 valid = self.check_safety_fleet(fleet_state_0)
+#                 if valid:
+#                     calendar[day]['SLOTS'] = slots
+#                     calendar[day]['MAINTENANCE'] = False
+#                     calendar[day]['ASSIGNMENT'] = on_maintenance
+#                     childs.append(
+#                         NodeScheduleDays(calendar,
+#                                          day,
+#                                          fleet_state_0,
+#                                          action_value,
+#                                          assignment=on_maintenance))
+#                     # childs.append(child)
+#             if action_value and self.calendar.calendar[day]['allowed'][
+#                     'public holidays'] and self.calendar.calendar[day][
+#                         'allowed']['a-type']:
+#                 on_maintenance = list(fleet_state.keys())[0:slots]
+#                 fleet_state_1 = self.fleet_operate_one_day(
+#                     fleet_state, day_old, on_maintenance)
+#                 fleet_state_1 = self.order_fleet_state(fleet_state_1)
+#                 valid = self.check_safety_fleet(fleet_state_1)
+#                 if valid:
+#                     calendar[day]['SLOTS'] = slots
+#                     calendar[day]['MAINTENANCE'] = True
+#                     calendar[day]['ASSIGNMENT'] = on_maintenance
+#                     childs.append(
+#                         NodeScheduleDays(calendar,
+#                                          day,
+#                                          fleet_state_1,
+#                                          action_value,
+#                                          assignment=on_maintenance))
+#         return childs
