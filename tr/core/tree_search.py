@@ -13,7 +13,7 @@ class TreeDaysPlanner:
     def __init__(self, calendar, fleet):
         self.calendar = calendar
         self.fleet = fleet
-        self.fleet_state = self.__build_fleet_state()
+        self.fleet_state = self.__build_fleet_state(type_check='A')
         self.fleet_state = self.order_fleet_state(self.fleet_state)
 
         self.calendar_tree = Tree()  #calendar tree with data as fleet_state
@@ -29,43 +29,58 @@ class TreeDaysPlanner:
         self.calendar_tree.add_node(self.root)
 
         self.schedule_counter = 0
-        self.all_schedules = deque(
-            maxlen=100)  #maintain only the top 100 schedules
+        self.all_schedules = deque(maxlen=100)  #maintain only the top 10
 
-    def __build_fleet_state(self):
+    def __build_fleet_state(self, type_check='A'):
         fleet_state = OrderedDict()
         for key in self.fleet.aircraft_info.keys():
             fleet_state[key] = {}
-            fleet_state[key]['DY-A'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['DY-A']
-            fleet_state[key]['FH-A'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['FH-A']
-            fleet_state[key]['FC-A'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['FH-A']
-            fleet_state[key]['DY-A-MAX'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['A-CI-DY']
-            fleet_state[key]['FH-A-MAX'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['A-CI-FH']
-            fleet_state[key]['FC-A-MAX'] = self.fleet.aircraft_info[key][
-                'A_INITIAL']['A-CI-FH']
+            fleet_state[key]['DY-{}'.format(
+                type_check
+            )] = self.fleet.aircraft_info[key]['A_INITIAL']['DY-{}']
+            fleet_state[key]['FH-{}'.format(
+                type_check)] = self.fleet.aircraft_info[key]['A_INITIAL'][
+                    'FH-{}'.format(type_check)]
+            fleet_state[key]['FC-{}'.format(
+                type_check)] = self.fleet.aircraft_info[key]['A_INITIAL'][
+                    'FH-{}'.format(type_check)]
+            fleet_state[key]['DY-{}-MAX'.format(
+                type_check)] = self.fleet.aircraft_info[key]['A_INITIAL'][
+                    '{}-CI-DY'.format(type_check)]
+            fleet_state[key]['FH-{}-MAX'.format(
+                type_check)] = self.fleet.aircraft_info[key]['A_INITIAL'][
+                    '{}-CI-FH'.format(type_check)]
+            fleet_state[key]['FC-{}-MAX'.format(
+                type_check)] = self.fleet.aircraft_info[key]['A_INITIAL'][
+                    '{}-CI-FH'.format(type_check)]
             fleet_state[key]['DFH'] = self.fleet.aircraft_info[key]['DFH']
             fleet_state[key]['DFC'] = self.fleet.aircraft_info[key]['DFC']
-            fleet_state[key]['DY-A-RATIO'] = fleet_state[key][
-                'DY-A'] / fleet_state[key]['DY-A-MAX']
-            fleet_state[key]['FH-A-RATIO'] = fleet_state[key][
-                'FH-A'] / fleet_state[key]['FH-A-MAX']
-            fleet_state[key]['FC-A-RATIO'] = fleet_state[key][
-                'FC-A'] / fleet_state[key]['FC-A-MAX']
+            fleet_state[key]['DY-{}-RATIO'.format(
+                type_check
+            )] = fleet_state[key]['DY-{}'.format(
+                type_check)] / fleet_state[key]['DY-{}-MAX'.format(type_check)]
+            fleet_state[key]['FH-{}-RATIO'.format(
+                type_check
+            )] = fleet_state[key]['FH-{}'.format(
+                type_check)] / fleet_state[key]['FH-{}-MAX'.format(type_check)]
+            fleet_state[key]['FC-{}-RATIO'.format(
+                type_check
+            )] = fleet_state[key]['FC-{}'.format(
+                type_check)] / fleet_state[key]['FC-{}-MAX'.format(type_check)]
             fleet_state[key]['TOTAL-RATIO'] = max([
-                fleet_state[key]['DY-A-RATIO'], fleet_state[key]['FH-A-RATIO'],
-                fleet_state[key]['FC-A-RATIO']
+                fleet_state[key]['DY-{}-RATIO'.format(type_check)],
+                fleet_state[key]['FH-{}-RATIO'.format(type_check)],
+                fleet_state[key]['FC-{}-RATIO'.format(type_check)]
             ])
-            fleet_state[key]['DY-A-WASTE'] = fleet_state[key][
-                'DY-A-MAX'] - fleet_state[key]['DY-A']
-            fleet_state[key]['FH-A-WASTE'] = fleet_state[key][
-                'FH-A-MAX'] - fleet_state[key]['FH-A']
-            fleet_state[key]['FC-A-WASTE'] = fleet_state[key][
-                'FC-A-MAX'] - fleet_state[key]['FC-A']
+            fleet_state[key]['DY-{}-WASTE'.format(
+                type_check)] = fleet_state[key]['DY-{}-MAX'.format(
+                    type_check)] - fleet_state[key]['DY-{}'.format(type_check)]
+            fleet_state[key]['FH-{}-WASTE'.format(
+                type_check)] = fleet_state[key]['FH-{}-MAX'.format(
+                    type_check)] - fleet_state[key]['FH-{}'.format(type_check)]
+            fleet_state[key]['FC-{}-WASTE'.format(
+                type_check)] = fleet_state[key]['FC-{}-MAX'.format(
+                    type_check)] - fleet_state[key]['FC-{}'.format(type_check)]
             fleet_state[key]['OPERATING'] = True
         return fleet_state
 
@@ -76,38 +91,42 @@ class TreeDaysPlanner:
                    reverse=True))
 
     #exceptions is a list of aircrafts that is in maintenance, thus not operating
-    def fleet_operate_one_day(self, fleet_state, date, on_maintenance=[]):
+    def fleet_operate_one_day(self,
+                              fleet_state,
+                              date,
+                              on_maintenance=[],
+                              type_check='A'):
         for aircraft in fleet_state.keys():
             if aircraft in on_maintenance:
-                fleet_state[aircraft]['DY-A-WASTE'] = fleet_state[aircraft][
-                    'DY-A-MAX'] - fleet_state[aircraft]['DY-A']
-                fleet_state[aircraft]['FH-A-WASTE'] = fleet_state[aircraft][
-                    'FH-A-MAX'] - fleet_state[aircraft]['FH-A']
-                fleet_state[aircraft]['FC-A-WASTE'] = fleet_state[aircraft][
-                    'FC-A-MAX'] - fleet_state[aircraft]['FC-A']
-                fleet_state[aircraft]['DY-A'] = 0
-                fleet_state[aircraft]['FH-A'] = 0
-                fleet_state[aircraft]['FC-A'] = 0
+                fleet_state[aircraft]['DY-{}-WASTE'] = fleet_state[aircraft][
+                    'DY-{}-MAX'] - fleet_state[aircraft]['DY-{}']
+                fleet_state[aircraft]['FH-{}-WASTE'] = fleet_state[aircraft][
+                    'FH-{}-MAX'] - fleet_state[aircraft]['FH-{}']
+                fleet_state[aircraft]['FC-{}-WASTE'] = fleet_state[aircraft][
+                    'FC-{}-MAX'] - fleet_state[aircraft]['FC-{}']
+                fleet_state[aircraft]['DY-{}'] = 0
+                fleet_state[aircraft]['FH-{}'] = 0
+                fleet_state[aircraft]['FC-{}'] = 0
                 fleet_state[aircraft]['OPERATING'] = False
             else:
-                fleet_state[aircraft]['DY-A'] += 1
+                fleet_state[aircraft]['DY-{}'] += 1
                 month = (date.month_name()[0:3]).upper()
-                fleet_state[aircraft]['FH-A'] += fleet_state[aircraft]['DFH'][
+                fleet_state[aircraft]['FH-{}'] += fleet_state[aircraft]['DFH'][
                     month]
-                fleet_state[aircraft]['FC-A'] += fleet_state[aircraft]['DFC'][
+                fleet_state[aircraft]['FC-{}'] += fleet_state[aircraft]['DFC'][
                     month]
                 fleet_state[aircraft]['OPERATING'] = True
 
-            fleet_state[aircraft]['DY-A-RATIO'] = fleet_state[aircraft][
-                'DY-A'] / fleet_state[aircraft]['DY-A-MAX']
-            fleet_state[aircraft]['FH-A-RATIO'] = fleet_state[aircraft][
-                'FH-A'] / fleet_state[aircraft]['FH-A-MAX']
-            fleet_state[aircraft]['FC-A-RATIO'] = fleet_state[aircraft][
-                'FC-A'] / fleet_state[aircraft]['FC-A-MAX']
+            fleet_state[aircraft]['DY-{}-RATIO'] = fleet_state[aircraft][
+                'DY-{}'] / fleet_state[aircraft]['DY-{}-MAX']
+            fleet_state[aircraft]['FH-{}-RATIO'] = fleet_state[aircraft][
+                'FH-{}'] / fleet_state[aircraft]['FH-{}-MAX']
+            fleet_state[aircraft]['FC-{}-RATIO'] = fleet_state[aircraft][
+                'FC-{}'] / fleet_state[aircraft]['FC-{}-MAX']
             fleet_state[aircraft]['TOTAL-RATIO'] = max([
-                fleet_state[aircraft]['DY-A-RATIO'],
-                fleet_state[aircraft]['FH-A-RATIO'],
-                fleet_state[aircraft]['FC-A-RATIO']
+                fleet_state[aircraft]['DY-{}-RATIO'],
+                fleet_state[aircraft]['FH-{}-RATIO'],
+                fleet_state[aircraft]['FC-{}-RATIO']
             ])
         return fleet_state
 
@@ -272,11 +291,11 @@ class TreeDaysPlanner:
             for aircraft in node.fleet_state.keys():
                 if not node.fleet_state[aircraft]['OPERATING']:
                     score_waste_DY += node_schedule.fleet_state[aircraft][
-                        'DY-A-WASTE']
+                        'DY-{}-WASTE']
                     score_waste_FH += node_schedule.fleet_state[aircraft][
-                        'FH-A-WASTE']
+                        'FH-{}-WASTE']
                     score_waste_FC += node_schedule.fleet_state[aircraft][
-                        'FC-A-WASTE']
+                        'FC-{}-WASTE']
         return score_waste_DY, score_waste_FH, score_waste_FC
 
 
