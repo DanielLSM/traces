@@ -1,5 +1,7 @@
 import treelib
 
+from collections import OrderedDict
+
 
 class NodeScheduleDays(treelib.Node):
     def __init__(self,
@@ -86,17 +88,17 @@ def order_fleet_state(fleet_state):
 
 
 def generate_code(limit, last_code):
-    last_code_split = last_code.split()
-    last_code_numbers = last_code_split[-1].split('.')
+    import ipdb
+    ipdb.set_trace()
+    last_code_numbers = str(last_code).split('.')
 
-    rotation_check = (int(last_code_numbers[0]) + 1) % limit
+    rotation_check = (int(last_code_numbers[0]) + 1) % (limit + 1)
     if rotation_check == 0:
         rotation_check = 1
     if rotation_check == 1:
-        cardinal_check = int(last_code_numbers[-1]) + 1
+        cardinal_check = int(last_code_numbers[1]) + 1
     else:
-        cardinal_check = int(last_code_numbers[-1])
+        cardinal_check = int(last_code_numbers[1])
 
-    code = '{} {}.{}'.format(last_code_split[0], rotation_check,
-                             cardinal_check)
+    code = '{}.{}'.format(rotation_check, cardinal_check)
     return code

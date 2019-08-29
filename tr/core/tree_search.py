@@ -7,7 +7,7 @@ from copy import deepcopy
 from functools import partial
 
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
-from tr.core.tree_utils import NodeScheduleDays, generate_code
+from tr.core.tree_utils import NodeScheduleDays, generate_code, node_schedule_to_excel
 
 from tr.core.utils import advance_date
 
@@ -19,14 +19,8 @@ class TreeDaysPlanner:
     def __init__(self, calendar, fleet):
         self.calendar = calendar
         self.fleet = fleet
-
         self.utilization_ratio, self.code_generator = self.__build_calendar_helpers(
         )
-        self.check_code = OrderedDict()
-
-        import ipdb
-        ipdb.set_trace()
-
         self.calendar_tree = {'A': Tree(), 'C': Tree()}
 
         for type_check in type_checks:
@@ -82,6 +76,9 @@ class TreeDaysPlanner:
                 fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
                 fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
                 fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
+                code = fleet_state[aircraft]['{}-SN'.format(type_check)]
+                fleet_state[aircraft]['{}-SN'.format(
+                    type_check)] = self.code_generator[type_check](code)
                 fleet_state[aircraft]['OPERATING'] = False
             else:
                 fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
@@ -165,7 +162,6 @@ class TreeDaysPlanner:
                 fleet_state_1 = order_fleet_state(fleet_state_1)
 
                 valid = self.check_safety_fleet(fleet_state_1)
-                s
                 if valid:
                     calendar_1[day]['SLOTS'] = slots
                     calendar_1[day]['MAINTENANCE'] = True
@@ -194,6 +190,8 @@ class TreeDaysPlanner:
                                          assignment=on_maintenance))
         return childs
 
+    #TODO: for c-checks you can only do 1 at a time, with an interval of 3 days
+    #you also can do a C-check if the due date doesnt colide with a peak season
     def solve(self, node_schedule, type_check='A', limit=1000):
         if self.check_solved(node_schedule.calendar):
             return node_schedule
@@ -230,7 +228,7 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    def solve_schedule(self, type_check='A'):
+    def solve_schedule(self, type_check='C'):
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
@@ -245,6 +243,8 @@ class TreeDaysPlanner:
 
         import ipdb
         ipdb.set_trace()
+
+        node_schedule_to_excel(result, type)
 
         return result
 
@@ -272,3 +272,9 @@ class TreeDaysPlanner:
         # avg. worst calendar/best calendar score
         # backtracked, time,
         pass
+
+    # TODO need to fix the C_elapsed_time
+    def node_schedule_to_excel(self, node_schedule):
+        excel_schedule = {}
+        calendar = node_schedule.calendar
+        fleet_state = node_schedule.fleet_state
