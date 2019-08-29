@@ -4,7 +4,7 @@ import datetime
 from tqdm import tqdm
 
 from tr.core.resources import f2_out, f1_in_tasks, f1_in_checks
-from tr.core.utils import dict_to_list, diff_time_list, get_slots
+from tr.core.utils import dict_to_list, diff_time_list, get_slots, diff_time_list_peak_season
 from tr.core.utils import advance_date, days_between_dates, convert_iso_to_timestamp
 
 from collections import OrderedDict, defaultdict
@@ -39,16 +39,20 @@ def book_to_kwargs_MPO(book):
 
     a_time = dict_to_list(calendar_restrictions['A_NOT_ALLOWED']['DATE'])
     c_time = diff_time_list(calendar_restrictions['C_NOT_ALLOWED'])
+    c_peak = diff_time_list_peak_season(calendar_restrictions['C_PEAK'])
     all_time = dict_to_list(calendar_restrictions['PUBLIC_HOLIDAYS']['DATE'])
 
     a_resources = {'slots': get_slots(calendar_restrictions['MORE_A_SLOTS'])}
     c_resources = {'slots': get_slots(calendar_restrictions['MORE_C_SLOTS'])}
 
     m_type_restriction['a-type'] = {'time': a_time, 'resources': a_resources}
-    m_type_restriction['c-type'] = {'time': c_time, 'resources': c_resources}
+    m_type_restriction['c-type'] = {
+        'time': c_time,
+        'resources': c_resources,
+        'c_peak': c_peak
+    }
     m_type_restriction['all'] = {'time': all_time}
 
-    # TODO
     end = datetime.datetime(2022, 2, 1, 0, 0)
     start_date = pd.to_datetime(book['ADDITIONAL'][2019][1])
     end_date = pd.to_datetime(end)

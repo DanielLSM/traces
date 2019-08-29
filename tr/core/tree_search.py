@@ -7,7 +7,7 @@ from copy import deepcopy
 from functools import partial
 
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
-from tr.core.tree_utils import NodeScheduleDays, generate_code, node_schedule_to_excel
+from tr.core.tree_utils import NodeScheduleDays, generate_code
 
 from tr.core.utils import advance_date
 
@@ -19,7 +19,7 @@ class TreeDaysPlanner:
     def __init__(self, calendar, fleet):
         self.calendar = calendar
         self.fleet = fleet
-        self.utilization_ratio, self.code_generator = self.__build_calendar_helpers(
+        self.utilization_ratio, self.code_generator, self.tats = self.__build_calendar_helpers(
         )
         self.calendar_tree = {'A': Tree(), 'C': Tree()}
 
@@ -46,12 +46,20 @@ class TreeDaysPlanner:
             'C': partial(generate_code, 12)
         }
         utilization_ratio = OrderedDict()
+        tats = OrderedDict()
         for _ in self.fleet.aircraft_info.keys():
             utilization_ratio[_] = {}
             utilization_ratio[_]['DFH'] = self.fleet.aircraft_info[_]['DFH']
             utilization_ratio[_]['DFC'] = self.fleet.aircraft_info[_]['DFC']
 
-        return utilization_ratio, code_generator
+            c_elapsed_time = self.fleet.aircraft_info[_]['C_ELAPSED_TIME']
+            c_elapsed_tats = list(c_elapsed_time.keys())
+            c_elapsed_tats.remove('Fleet')
+            tats[_] = deque()
+            for __ in c_elapsed_tats:
+                tats[_].append(c_elapsed_time[__])
+
+        return utilization_ratio, code_generator, tats
 
     # exceptions is a list of aircrafts that is in maintenance, thus not operating
     def fleet_operate_one_day(self,
@@ -61,25 +69,28 @@ class TreeDaysPlanner:
                               type_check='A'):
         for aircraft in fleet_state.keys():
             if aircraft in on_maintenance:
-                fleet_state[aircraft]['DY-{}-WASTE'.format(
-                    type_check)] = fleet_state[aircraft]['DY-{}-MAX'.format(
-                        type_check)] - fleet_state[aircraft]['DY-{}'.format(
-                            type_check)]
-                fleet_state[aircraft]['FH-{}-WASTE'.format(
-                    type_check)] = fleet_state[aircraft]['FH-{}-MAX'.format(
-                        type_check)] - fleet_state[aircraft]['FH-{}'.format(
-                            type_check)]
-                fleet_state[aircraft]['FC-{}-WASTE'.format(
-                    type_check)] = fleet_state[aircraft]['FC-{}-MAX'.format(
-                        type_check)] - fleet_state[aircraft]['FC-{}'.format(
-                            type_check)]
+                # dont worry with this if, an aircraft will never be selected
+                # on A-check again, but in C-check will
+                if fleet_state[aircraft]['OPERATING']:
+                    fleet_state[aircraft]['DY-{}-WASTE'.format(
+                        type_check)] = fleet_state[aircraft][
+                            'DY-{}-MAX'.format(type_check)] - fleet_state[
+                                aircraft]['DY-{}'.format(type_check)]
+                    fleet_state[aircraft]['FH-{}-WASTE'.format(
+                        type_check)] = fleet_state[aircraft][
+                            'FH-{}-MAX'.format(type_check)] - fleet_state[
+                                aircraft]['FH-{}'.format(type_check)]
+                    fleet_state[aircraft]['FC-{}-WASTE'.format(
+                        type_check)] = fleet_state[aircraft][
+                            'FC-{}-MAX'.format(type_check)] - fleet_state[
+                                aircraft]['FC-{}'.format(type_check)]
+                    code = fleet_state[aircraft]['{}-SN'.format(type_check)]
+                    fleet_state[aircraft]['{}-SN'.format(
+                        type_check)] = self.code_generator[type_check](code)
+                    fleet_state[aircraft]['OPERATING'] = False
                 fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
                 fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
                 fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
-                code = fleet_state[aircraft]['{}-SN'.format(type_check)]
-                fleet_state[aircraft]['{}-SN'.format(
-                    type_check)] = self.code_generator[type_check](code)
-                fleet_state[aircraft]['OPERATING'] = False
             else:
                 fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
                 month = (date.month_name()[0:3]).upper()
@@ -137,12 +148,25 @@ class TreeDaysPlanner:
 
         return slots
 
+    # TODO: after this, make a structure on the node to keep
+    # the aircrafts currently in check "currently on maintenance"
+    # then the on_maintenance will be the sum of "currently on maintenance"
+    # and the remaining c_slots possible. to respect the three day rule
+    # also put a counter everytime an aircraft is put in a C_COUNTER
+    # everyday you subtract, when it reaches to 0 you can put another one.
+    def allowed_in_c_peak(self, day, on_maintenance=[]):
+        for _ in on_maintenance:
+            pass
+
     # there is no variables, just one bolean variable, do maintenance or not
     def expand_with_heuristic(self, node_schedule, type_check='A'):
         calendar_0 = deepcopy(node_schedule.calendar)
         calendar_1 = deepcopy(node_schedule.calendar)
         fleet_state_0 = deepcopy(node_schedule.fleet_state)
         fleet_state_1 = deepcopy(node_schedule.fleet_state)
+
+        if type_check == 'C':
+            on_continuous_maintenance = []
 
         day = node_schedule.day
         day_old = day
@@ -153,25 +177,49 @@ class TreeDaysPlanner:
         calendar_1[day] = {}
 
         for action_value in maintenance_actions:
-            if action_value and self.calendar.calendar[day]['allowed'][
-                    'public holidays'] and self.calendar.calendar[day][
-                        'allowed']['a-type']:
-                on_maintenance = list(fleet_state_1.keys())[0:slots]
-                fleet_state_1 = self.fleet_operate_one_day(
-                    fleet_state_1, day_old, on_maintenance, type_check)
-                fleet_state_1 = order_fleet_state(fleet_state_1)
+            # if type_check
+            if type_check == 'A':  # for _ in range(slots):
+                if action_value and self.calendar.calendar[day]['allowed'][
+                        'public holidays'] and self.calendar.calendar[day][
+                            'allowed']['a-type']:
+                    on_maintenance = list(fleet_state_1.keys())[0:slots]
+                    fleet_state_1 = self.fleet_operate_one_day(
+                        fleet_state_1, day_old, on_maintenance, type_check)
+                    fleet_state_1 = order_fleet_state(fleet_state_1)
 
-                valid = self.check_safety_fleet(fleet_state_1)
-                if valid:
-                    calendar_1[day]['SLOTS'] = slots
-                    calendar_1[day]['MAINTENANCE'] = True
-                    calendar_1[day]['ASSIGNMENT'] = on_maintenance
-                    childs.append(
-                        NodeScheduleDays(calendar_1,
-                                         day,
-                                         fleet_state_1,
-                                         action_value,
-                                         assignment=on_maintenance))
+                    valid = self.check_safety_fleet(fleet_state_1)
+                    if valid:
+                        calendar_1[day]['SLOTS'] = slots
+                        calendar_1[day]['MAINTENANCE'] = True
+                        calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                        childs.append(
+                            NodeScheduleDays(calendar_1,
+                                             day,
+                                             fleet_state_1,
+                                             action_value,
+                                             assignment=on_maintenance))
+            if type_check == 'C':
+                if action_value and self.calendar.calendar[day]['allowed'][
+                        'public holidays'] and self.calendar.calendar[day][
+                            'allowed']['c-type']:
+                    on_maintenance = list(fleet_state_1.keys())[0:slots]
+                    if self.allowed_in_c_peak(day, on_maintenance):
+                        fleet_state_1 = self.fleet_operate_one_day(
+                            fleet_state_1, day_old, on_maintenance, type_check)
+                        fleet_state_1 = order_fleet_state(fleet_state_1)
+
+                        valid = self.check_safety_fleet(fleet_state_1)
+                        if valid:
+                            calendar_1[day]['SLOTS'] = slots
+                            calendar_1[day]['MAINTENANCE'] = True
+                            calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                            childs.append(
+                                NodeScheduleDays(calendar_1,
+                                                 day,
+                                                 fleet_state_1,
+                                                 action_value,
+                                                 assignment=on_maintenance))
+
             if not action_value:
                 on_maintenance = []
                 fleet_state_0 = self.fleet_operate_one_day(

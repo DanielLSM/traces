@@ -44,6 +44,20 @@ def diff_time_list(sheet, type='days'):
     return time_list
 
 
+def diff_time_list_peak_season(sheet, type='days'):
+    sheet_keys = list(sheet.keys())
+    assert (
+        'PEAK BEGIN' in sheet_keys) and 'PEAK END' in sheet_keys, "undefined"
+    time_list = []
+    for _ in sheet['PEAK BEGIN'].keys():
+        delta = sheet['PEAK END'][_] - sheet['PEAK BEGIN'][_]
+        time_list.extend([
+            sheet['PEAK BEGIN'][_] + timedelta(days=i)
+            for i in range(delta.days + 1)
+        ])
+    return time_list
+
+
 def convert_iso_to_timestamp(iso_str):
     daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
     # time = time.timestamp()
