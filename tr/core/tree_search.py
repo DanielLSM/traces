@@ -6,6 +6,9 @@ from collections import OrderedDict, deque
 from copy import deepcopy
 from functools import partial
 
+from tr.core.tree_utils import build_fleet_state, order_fleet_state
+from tr.core.tree_utils import NodeScheduleDays, generate_code
+
 from tr.core.utils import advance_date
 
 maintenance_actions = [0, 1]  # the order of this list reflects an heuristc btw
@@ -17,20 +20,18 @@ class TreeDaysPlanner:
         self.calendar = calendar
         self.fleet = fleet
 
-        self.utilization_ratio, self.code_generator = self.__build_calendar_helpers()
+        self.utilization_ratio, self.code_generator = self.__build_calendar_helpers(
+        )
         self.check_code = OrderedDict()
 
         import ipdb
         ipdb.set_trace()
 
-        self.calendar_tree = {
-            'A': Tree(),
-            'C': Tree()
-        }
+        self.calendar_tree = {'A': Tree(), 'C': Tree()}
 
         for type_check in type_checks:
-            fleet_state = self.__build_fleet_state(type_check=type_check)
-            fleet_state = self.order_fleet_state(fleet_state)
+            fleet_state = build_fleet_state(self.fleet, type_check=type_check)
+            fleet_state = order_fleet_state(fleet_state)
 
             root = NodeScheduleDays(calendar=OrderedDict(),
                                     day=self.calendar.start_date,
@@ -46,91 +47,17 @@ class TreeDaysPlanner:
         self.all_schedules = deque(maxlen=100)  # maintain only the top 10
 
     def __build_calendar_helpers(self):
-        def generate_code(limit, last_code):
-            last_code_split = last_code.split()
-            last_code_numbers = last_code_split[-1].split('.')
-        
-            rotation_check = (int(last_code_numbers) + 1) % limit
-            cardinal_check = int(last_code_numbers[-1]) + 1
-
-            code = '{} {}.{}'.format(last_code_split[0], rotation_check, cardinal_check) 
-
-        code_generator = {'A': partial(generate_code, limit=4), 'C': partial(generate_code, limit=4)}
+        code_generator = {
+            'A': partial(generate_code, 4),
+            'C': partial(generate_code, 12)
+        }
         utilization_ratio = OrderedDict()
         for _ in self.fleet.aircraft_info.keys():
             utilization_ratio[_] = {}
             utilization_ratio[_]['DFH'] = self.fleet.aircraft_info[_]['DFH']
             utilization_ratio[_]['DFC'] = self.fleet.aircraft_info[_]['DFC']
 
-        import ipdb 
-        ipdb.set_trace()
-
-        return utilization_ratio
-
-    def __build_fleet_state(self, type_check='A'):
-        fleet_state = OrderedDict()
-        for key in self.fleet.aircraft_info.keys():
-            fleet_state[key] = {}
-            fleet_state[key]['DY-{}'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['DY-{}'.format(
-                        type_check)]
-            fleet_state[key]['FH-{}'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['FH-{}'.format(
-                        type_check)]
-            fleet_state[key]['FC-{}'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['FH-{}'.format(
-                        type_check)]
-            fleet_state[key]['DY-{}-MAX'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['{}-CI-DY'.format(
-                        type_check)]
-            fleet_state[key]['FH-{}-MAX'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['{}-CI-FH'.format(
-                        type_check)]
-            fleet_state[key]['FC-{}-MAX'.format(
-                type_check)] = self.fleet.aircraft_info[key][
-                    '{}_INITIAL'.format(type_check)]['{}-CI-FH'.format(
-                        type_check)]
-
-            fleet_state[key]['{}-SN'.format(type_check)] = self.fleet.aircraft_info[key]['{}_INITIAL'.format(type_check)]['{}-SN'.format(type_check)]
-            fleet_state[key]['DY-{}-RATIO'.format(
-                type_check
-            )] = fleet_state[key]['DY-{}'.format(
-                type_check)] / fleet_state[key]['DY-{}-MAX'.format(type_check)]
-            fleet_state[key]['FH-{}-RATIO'.format(
-                type_check
-            )] = fleet_state[key]['FH-{}'.format(
-                type_check)] / fleet_state[key]['FH-{}-MAX'.format(type_check)]
-            fleet_state[key]['FC-{}-RATIO'.format(
-                type_check
-            )] = fleet_state[key]['FC-{}'.format(
-                type_check)] / fleet_state[key]['FC-{}-MAX'.format(type_check)]
-            fleet_state[key]['TOTAL-RATIO'] = max([
-                fleet_state[key]['DY-{}-RATIO'.format(type_check)],
-                fleet_state[key]['FH-{}-RATIO'.format(type_check)],
-                fleet_state[key]['FC-{}-RATIO'.format(type_check)]
-            ])
-            fleet_state[key]['DY-{}-WASTE'.format(
-                type_check)] = fleet_state[key]['DY-{}-MAX'.format(
-                    type_check)] - fleet_state[key]['DY-{}'.format(type_check)]
-            fleet_state[key]['FH-{}-WASTE'.format(
-                type_check)] = fleet_state[key]['FH-{}-MAX'.format(
-                    type_check)] - fleet_state[key]['FH-{}'.format(type_check)]
-            fleet_state[key]['FC-{}-WASTE'.format(
-                type_check)] = fleet_state[key]['FC-{}-MAX'.format(
-                    type_check)] - fleet_state[key]['FC-{}'.format(type_check)]
-            fleet_state[key]['OPERATING'] = True
-        return fleet_state
-
-    def order_fleet_state(self, fleet_state):
-        return OrderedDict(
-            sorted(fleet_state.items(),
-                   key=lambda x: x[1]['TOTAL-RATIO'],
-                   reverse=True))
+        return utilization_ratio, code_generator
 
     # exceptions is a list of aircrafts that is in maintenance, thus not operating
     def fleet_operate_one_day(self,
@@ -160,9 +87,11 @@ class TreeDaysPlanner:
                 fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
                 month = (date.month_name()[0:3]).upper()
                 fleet_state[aircraft]['FH-{}'.format(
-                    type_check)] += self.utilization_ratio[aircraft]['DFH'][month]
+                    type_check
+                )] += self.utilization_ratio[aircraft]['DFH'][month]
                 fleet_state[aircraft]['FC-{}'.format(
-                    type_check)] += self.utilization_ratio[aircraft]['DFC'][month]
+                    type_check
+                )] += self.utilization_ratio[aircraft]['DFC'][month]
                 fleet_state[aircraft]['OPERATING'] = True
 
             fleet_state[aircraft]['DY-{}-RATIO'.format(
@@ -208,13 +137,6 @@ class TreeDaysPlanner:
         max_slots = max(slots)
 
         slots = max_slots
-        # check_types = ['a-type', 'c-type']
-        # slots = [
-        #     self.calendar.calendar[date]['resources']['slots'][check]
-        #     for check in check_types
-        # ]
-
-        # slots = self.calendar.calendar[date]['resources']['slots'][check_type]
 
         return slots
 
@@ -240,9 +162,10 @@ class TreeDaysPlanner:
                 on_maintenance = list(fleet_state_1.keys())[0:slots]
                 fleet_state_1 = self.fleet_operate_one_day(
                     fleet_state_1, day_old, on_maintenance, type_check)
-                fleet_state_1 = self.order_fleet_state(fleet_state_1)
+                fleet_state_1 = order_fleet_state(fleet_state_1)
 
                 valid = self.check_safety_fleet(fleet_state_1)
+                s
                 if valid:
                     calendar_1[day]['SLOTS'] = slots
                     calendar_1[day]['MAINTENANCE'] = True
@@ -257,7 +180,7 @@ class TreeDaysPlanner:
                 on_maintenance = []
                 fleet_state_0 = self.fleet_operate_one_day(
                     fleet_state_0, day_old, on_maintenance, type_check)
-                fleet_state_0 = self.order_fleet_state(fleet_state_0)
+                fleet_state_0 = order_fleet_state(fleet_state_0)
                 valid = self.check_safety_fleet(fleet_state_0)
                 if valid:
                     calendar_0[day]['SLOTS'] = slots
@@ -349,30 +272,3 @@ class TreeDaysPlanner:
         # avg. worst calendar/best calendar score
         # backtracked, time,
         pass
-
-# TODO you should be able to start from an assignment or a tree
-
-
-class NodeScheduleDays(treelib.Node):
-    def __init__(self,
-                 calendar,
-                 day,
-                 fleet_state,
-                 action_maintenance,
-                 assignment=[],
-                 tag=None,
-                 identifier=None,
-                 *args,
-                 **kwargs):
-        day_str = day.strftime("%m/%d/%Y")
-
-        if tag is None:
-            tag = '{}_{}'.format(day_str, action_maintenance)
-
-        super().__init__(tag=tag, *args, **kwargs)
-        self.calendar = calendar
-        self.day = day
-        self.fleet_state = fleet_state
-        self.assignment = assignment  # state of the world
-        self.action_maintenance = action_maintenance
-        self.count = 0
