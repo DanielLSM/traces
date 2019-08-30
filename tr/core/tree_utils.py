@@ -12,6 +12,8 @@ class NodeScheduleDays(treelib.Node):
                  assignment=[],
                  tag=None,
                  identifier=None,
+                 on_c_maintenance={},
+                 c_maintenance_counter=0,
                  *args,
                  **kwargs):
         day_str = day.strftime("%m/%d/%Y")
@@ -26,6 +28,8 @@ class NodeScheduleDays(treelib.Node):
         self.assignment = assignment  # state of the world
         self.action_maintenance = action_maintenance
         self.count = 0
+        self.on_c_maintenance = on_c_maintenance
+        self.c_maintenance_counter = c_maintenance_counter
 
 
 def build_fleet_state(fleet, type_check='A'):

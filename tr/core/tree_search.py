@@ -135,16 +135,14 @@ class TreeDaysPlanner:
             return True
         return False
 
-    def get_slots(self, date, check_type='a-type'):
+    def get_slots(self, date, check_type):
 
-        check_types = ['a-type', 'c-type']
-        slots = [
-            self.calendar.calendar[date]['resources']['slots'][check]
-            for check in check_types
-        ]
-        max_slots = max(slots)
-
-        slots = max_slots
+        if check_type == 'A':
+            slots = self.calendar.calendar[date]['resources']['slots'][
+                'a-type']
+        elif check_type == 'C':
+            slots = self.calendar.calendar[date]['resources']['slots'][
+                'c-type']
 
         return slots
 
@@ -154,9 +152,9 @@ class TreeDaysPlanner:
     # and the remaining c_slots possible. to respect the three day rule
     # also put a counter everytime an aircraft is put in a C_COUNTER
     # everyday you subtract, when it reaches to 0 you can put another one.
-    def allowed_in_c_peak(self, day, on_maintenance=[]):
-        for _ in on_maintenance:
-            pass
+    def due_date_allowed_in_c_peak(self, day, on_maintenance_check=[]):
+        assert len(on_maintenance_check) != 0
+
 
     # there is no variables, just one bolean variable, do maintenance or not
     def expand_with_heuristic(self, node_schedule, type_check='A'):
@@ -167,12 +165,13 @@ class TreeDaysPlanner:
 
         if type_check == 'C':
             on_continuous_maintenance = []
+            c_maintenance_counter = deepcopy(node_schedule.c_maintenance_counter)
 
         day = node_schedule.day
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
-        slots = self.get_slots(day) + 2
+        slots = self.get_slots(day, type_check) + 2
         calendar_0[day] = {}
         calendar_1[day] = {}
 
@@ -198,12 +197,12 @@ class TreeDaysPlanner:
                                              fleet_state_1,
                                              action_value,
                                              assignment=on_maintenance))
-            if type_check == 'C':
+            elif type_check == 'C':
                 if action_value and self.calendar.calendar[day]['allowed'][
                         'public holidays'] and self.calendar.calendar[day][
                             'allowed']['c-type']:
                     on_maintenance = list(fleet_state_1.keys())[0:slots]
-                    if self.allowed_in_c_peak(day, on_maintenance):
+                    if self.due_date_allowed_in_c_peak(day, on_maintenance):
                         fleet_state_1 = self.fleet_operate_one_day(
                             fleet_state_1, day_old, on_maintenance, type_check)
                         fleet_state_1 = order_fleet_state(fleet_state_1)
@@ -212,13 +211,15 @@ class TreeDaysPlanner:
                         if valid:
                             calendar_1[day]['SLOTS'] = slots
                             calendar_1[day]['MAINTENANCE'] = True
-                            calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                            calendar_1[day]['ASSIGNMENT'] = on_maintenance[0]
+                            c_counter_check = 3
+                            
                             childs.append(
                                 NodeScheduleDays(calendar_1,
                                                  day,
                                                  fleet_state_1,
                                                  action_value,
-                                                 assignment=on_maintenance))
+                                                 assignment=on_maintenance[0]))
 
             if not action_value:
                 on_maintenance = []
