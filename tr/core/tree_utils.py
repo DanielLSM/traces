@@ -12,7 +12,7 @@ class NodeScheduleDays(treelib.Node):
                  assignment=[],
                  tag=None,
                  identifier=None,
-                 on_c_maintenance={},
+                 on_c_maintenance=[],
                  c_maintenance_counter=0,
                  *args,
                  **kwargs):
@@ -71,15 +71,15 @@ def build_fleet_state(fleet, type_check='A'):
             fleet_state[key]['FH-{}-RATIO'.format(type_check)],
             fleet_state[key]['FC-{}-RATIO'.format(type_check)]
         ])
-        fleet_state[key]['DY-{}-WASTE'.format(
-            type_check)] = fleet_state[key]['DY-{}-MAX'.format(
-                type_check)] - fleet_state[key]['DY-{}'.format(type_check)]
-        fleet_state[key]['FH-{}-WASTE'.format(
-            type_check)] = fleet_state[key]['FH-{}-MAX'.format(
-                type_check)] - fleet_state[key]['FH-{}'.format(type_check)]
-        fleet_state[key]['FC-{}-WASTE'.format(
-            type_check)] = fleet_state[key]['FC-{}-MAX'.format(
-                type_check)] - fleet_state[key]['FC-{}'.format(type_check)]
+        # fleet_state[key]['DY-{}-WASTE'.format(
+        #     type_check)] = fleet_state[key]['DY-{}-MAX'.format(
+        #         type_check)] - fleet_state[key]['DY-{}'.format(type_check)]
+        # fleet_state[key]['FH-{}-WASTE'.format(
+        #     type_check)] = fleet_state[key]['FH-{}-MAX'.format(
+        #         type_check)] - fleet_state[key]['FH-{}'.format(type_check)]
+        # fleet_state[key]['FC-{}-WASTE'.format(
+        #     type_check)] = fleet_state[key]['FC-{}-MAX'.format(
+        #         type_check)] - fleet_state[key]['FC-{}'.format(type_check)]
         fleet_state[key]['OPERATING'] = True
     return fleet_state
 
