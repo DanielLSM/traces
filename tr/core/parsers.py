@@ -49,7 +49,8 @@ def book_to_kwargs_MPO(book):
     m_type_restriction['c-type'] = {
         'time': c_time,
         'resources': c_resources,
-        'c_peak': c_peak
+        'c_peak': c_peak,
+        'c_not_allowed': c_time
     }
     m_type_restriction['all'] = {'time': all_time}
 

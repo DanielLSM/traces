@@ -7,6 +7,20 @@ from collections import OrderedDict, defaultdict
 from tr.core.parsers import book_to_kwargs_MPO
 from tr.core.utils import advance_date, dates_between
 
+#TODO: you can read the readme.md, but the basic idea is,
+# for a_checks, we put 1 everywehre, then we put 2 on more_a_slots
+# the a_not_allowed already restricts fridays and weekends
+
+# for c_checks, we put 3 everywhre, then we restrict the callendar,
+# by putting different keys in the allowed which will be acessed later,
+# one key for c_peak, another c_not_allowed, because c_peaks and c_not_allowed
+# are a lot of days, we block all those days, and then restrict the weekends
+# at the end.
+
+# for the a slots, they are directly replaced, for the c slots most slots are
+# on c_peak or c_not_allowed days, so we need to unblock when adding the slots
+# but again, restrict the weekends at the end always
+
 
 def get_calendar(start_date, end_date, type='days'):
     n_days = dates_between(start_date, end_date, type='days')
@@ -15,13 +29,14 @@ def get_calendar(start_date, end_date, type='days'):
         calendar[advance_date(start_date, days=_)] = {
             'allowed': {
                 'public holidays': True,
+                'no_weekends': True,
                 'a-type': True,
                 'c-type': True
             },
             'resources': {
                 'slots': {
                     'a-type': 1,
-                    'c-type': 1
+                    'c-type': 3,
                 }
             }
         }
@@ -54,6 +69,12 @@ class Calendar:
         calendar = self.restrict_calendar(calendar,
                                           self.c_type['time'],
                                           info='c-type')
+        calendar = self.restrict_calendar(calendar,
+                                          self.c_type['c_not_allowed'],
+                                          info='c_not_allowed')
+        calendar = self.restrict_calendar(calendar,
+                                          self.c_type['c_peak'],
+                                          info='c_peak')
 
         print("INFO: adding a-type resources (slots)")
         calendar = self.add_resources(calendar,
@@ -65,11 +86,21 @@ class Calendar:
         calendar = self.add_resources(calendar,
                                       self.c_type['resources'],
                                       typek='slots',
-                                      info='a-type')
+                                      info='c-type')
+        calendar = self.add_resources(calendar,
+                                      self.c_type['resources'],
+                                      typek='slots',
+                                      info='c_not_allowed')
+        calendar = self.add_resources(calendar,
+                                      self.c_type['resources'],
+                                      typek='slots',
+                                      info='c_peak')
 
+        calendar = self.restrict_weekends(calendar)
         print("#########################")
         self.calendar = calendar
         print("INFO: calendar complete!")
+        self.test()
 
     @staticmethod
     def restrict_calendar(calendar, restrict_list, info='not allowed'):
@@ -85,11 +116,35 @@ class Calendar:
     def add_resources(calendar, restrict_dict, typek='slots', info='a-type'):
         start_date = list(calendar.keys())[0]
         end_date = list(calendar.keys())[-1]
-
         for _ in restrict_dict[typek].keys():
             if _ > start_date and _ < end_date:
-                calendar[_]['resources'][typek][info] += 1
+                calendar[_]['resources'][typek][info] = restrict_dict['slots'][
+                    _]
+                calendar[_]['allowed'][info] = True
         return calendar
+
+    def restrict_weekends(self, calendar):
+        start_date = list(calendar.keys())[0]
+        end_date = list(calendar.keys())[-1]
+        n_days = dates_between(start_date, end_date, type='days')
+        for _ in range(n_days + 1):
+            day = advance_date(start_date, days=_)
+            if day.weekday() >= 5:
+                calendar[day]['allowed']['a-type'] = False
+                calendar[day]['allowed']['c-type'] = False
+                calendar[day]['allowed']['c_not_allowed'] = False
+                calendar[day]['allowed']['c_peak'] = False
+                calendar[day]['allowed']['no_weekends'] = False
+        return calendar
+
+    def test(self):
+        iso_str = '4/14/2019'
+        daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        assert self.calendar[daterinos]['allowed']['c-type'] == False
+        assert self.calendar[daterinos]['allowed']['c_not_allowed'] == False
+        assert self.calendar[daterinos]['allowed']['c_peak'] == False
+        assert self.calendar[daterinos]['allowed']['no_weekends'] == False
+        assert self.calendar[daterinos]['resources']['slots']['c-type'] == 1
 
     def plan(self, time_window):
         pass

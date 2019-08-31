@@ -14,6 +14,7 @@ class NodeScheduleDays(treelib.Node):
                  identifier=None,
                  on_c_maintenance=[],
                  c_maintenance_counter=0,
+                 on_c_maintenance_tats={},
                  *args,
                  **kwargs):
         day_str = day.strftime("%m/%d/%Y")
@@ -92,8 +93,6 @@ def order_fleet_state(fleet_state):
 
 
 def generate_code(limit, last_code):
-    import ipdb
-    ipdb.set_trace()
     last_code_numbers = str(last_code).split('.')
 
     rotation_check = (int(last_code_numbers[0]) + 1) % (limit + 1)
@@ -106,3 +105,31 @@ def generate_code(limit, last_code):
 
     code = '{}.{}'.format(rotation_check, cardinal_check)
     return code
+
+
+# def build_non_operating_fleet_state(fleet, type_check='C'):
+#     fleet_state = OrderedDict()
+#     for key in fleet.aircraft_info.keys():
+#         fleet_state[key] = {}
+#         fleet_state[key]['DY-C'.format(type_check)] = fleet.aircraft_info[key][
+#             '{}_INITIAL'.format(type_check)]['DY-{}'.format(type_check)]
+#         fleet_state[key]['FH-{}'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['FH-{}'.format(type_check)]
+#         fleet_state[key]['FC-{}'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['FH-{}'.format(type_check)]
+#         fleet_state[key]['DY-{}-MAX'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['{}-CI-DY'.format(type_check)]
+#         fleet_state[key]['FH-{}-MAX'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['{}-CI-FH'.format(type_check)]
+#         fleet_state[key]['FC-{}-MAX'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['{}-CI-FH'.format(type_check)]
+#         fleet_state[key]['{}-SN'.format(
+#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
+#                 type_check)]['{}-SN'.format(type_check)]
+#         fleet_state[key]['OPERATING'] = True
+#     return fleet_state
