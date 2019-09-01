@@ -31,7 +31,9 @@ def get_calendar(start_date, end_date, type='days'):
                 'public holidays': True,
                 'no_weekends': True,
                 'a-type': True,
-                'c-type': True
+                'c-type': True,
+                'c_allowed': True,
+                'c_peak': True
             },
             'resources': {
                 'slots': {
@@ -70,8 +72,8 @@ class Calendar:
                                           self.c_type['time'],
                                           info='c-type')
         calendar = self.restrict_calendar(calendar,
-                                          self.c_type['c_not_allowed'],
-                                          info='c_not_allowed')
+                                          self.c_type['c_allowed'],
+                                          info='c_allowed')
         calendar = self.restrict_calendar(calendar,
                                           self.c_type['c_peak'],
                                           info='c_peak')
@@ -90,7 +92,7 @@ class Calendar:
         calendar = self.add_resources(calendar,
                                       self.c_type['resources'],
                                       typek='slots',
-                                      info='c_not_allowed')
+                                      info='c_allowed')
         calendar = self.add_resources(calendar,
                                       self.c_type['resources'],
                                       typek='slots',
@@ -132,7 +134,7 @@ class Calendar:
             if day.weekday() >= 5:
                 calendar[day]['allowed']['a-type'] = False
                 calendar[day]['allowed']['c-type'] = False
-                calendar[day]['allowed']['c_not_allowed'] = False
+                calendar[day]['allowed']['c_allowed'] = False
                 calendar[day]['allowed']['c_peak'] = False
                 calendar[day]['allowed']['no_weekends'] = False
         return calendar
@@ -141,7 +143,7 @@ class Calendar:
         iso_str = '4/14/2019'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         assert self.calendar[daterinos]['allowed']['c-type'] == False
-        assert self.calendar[daterinos]['allowed']['c_not_allowed'] == False
+        assert self.calendar[daterinos]['allowed']['c_allowed'] == False
         assert self.calendar[daterinos]['allowed']['c_peak'] == False
         assert self.calendar[daterinos]['allowed']['no_weekends'] == False
         assert self.calendar[daterinos]['resources']['slots']['c-type'] == 1

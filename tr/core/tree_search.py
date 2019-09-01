@@ -247,26 +247,34 @@ class TreeDaysPlanner:
             # if type_check
             if action_value and self.calendar.calendar[day]['allowed'][
                     'public holidays'] and self.calendar.calendar[day][
-                        'allowed']['c-type']:
+                        'allowed']['c-type'] and self.calendar.calendar[day][
+                            'allowed']['c_peak']:
                 on_maintenance = list(fleet_state_1.keys())[0]
-                new_code = fleet_state_1[on_maintenance]['C-SN']
+                new_code = self.code_generator['C'](
+                    fleet_state_1[on_maintenance]['C-SN'])
 
-                import ipdb
-                ipdb.set_trace()
+                # import ipdb
+                # ipdb.set_trace()
                 # code_on_maintenance =
-                if self.c_allowed(day, on_maintenance, on_c_maintenance_1,
-                                  slots, c_maintenance_counter, new_code):
+                valid_c, on_c_maintenance_1, real_tats = self.c_allowed(
+                    day, on_maintenance, on_c_maintenance_1, slots,
+                    c_maintenance_counter, new_code, on_c_maintenance_tats_1)
+                if valid_c:
                     on_c_maintenance_1.append(on_maintenance)
                     fleet_state_1 = self.fleet_operate_one_day(
-                        fleet_state_1, day_old, on_maintenance, type_check)
+                        fleet_state_1, day_old, on_c_maintenance_1, type_check)
                     fleet_state_1 = order_fleet_state(fleet_state_1)
 
                     valid = self.check_safety_fleet(fleet_state_1)
                     if valid:
+                        import ipdb
+                        ipdb.set_trace()
                         calendar_1[day]['SLOTS'] = slots
                         calendar_1[day]['MAINTENANCE'] = True
-                        calendar_1[day]['ASSIGNMENT'] = on_maintenance[0]
+                        calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                        on_c_maintenance_1.append(on_maintenance)
                         c_maintenance_counter = 3
+                        on_c_maintenance_tats_1[on_c_maintenance_1] = real_tats
 
                         childs.append(
                             NodeScheduleDays(
@@ -280,27 +288,25 @@ class TreeDaysPlanner:
                                 on_c_maintenance_tats=on_c_maintenance_tats_1))
 
         if not action_value:
-            on_maintenance = []
-            on_maintenance = on_c_maintenance_0
             fleet_state_0 = self.fleet_operate_one_day(fleet_state_0, day_old,
-                                                       on_maintenance,
+                                                       on_c_maintenance_0,
                                                        type_check)
             fleet_state_0 = order_fleet_state(fleet_state_0)
             valid = self.check_safety_fleet(fleet_state_0)
             if valid:
                 calendar_0[day]['SLOTS'] = slots
                 calendar_0[day]['MAINTENANCE'] = False
-                calendar_0[day]['ASSIGNMENT'] = on_maintenance
+                calendar_0[day]['ASSIGNMENT'] = on_c_maintenance_0
                 childs.append(
                     NodeScheduleDays(
                         calendar_1,
                         day,
                         fleet_state_1,
                         action_value,
-                        assignment=on_maintenance[0],
+                        assignment=[],
                         on_c_maintenance=on_c_maintenance_0,
                         c_maintenance_counter=c_maintenance_counter,
-                        on_c_maintenance_tats_0=on_c_maintenance_0))
+                        on_c_maintenance_tats_0=on_c_maintenance_tats_0))
         return childs
 
     # TODO: after this, make a structure on the node to keep
@@ -310,29 +316,39 @@ class TreeDaysPlanner:
     # also put a counter everytime an aircraft is put in a C_COUNTER
     # everyday you subtract, when it reaches to 0 you can put another one.
     def c_allowed(self, day, on_maintenance, on_c_maintenance, slots,
-                  c_maintenance_counter, new_code):
-        all_maintenance = on_c_maintenance.extend(on_maintenance)
+                  c_maintenance_counter, new_code, all_maintenance_tats):
+        import ipdb
+        ipdb.set_trace()
+
+        all_maintenance = on_c_maintenance
+        all_maintenance.append(on_maintenance)
         assert len(all_maintenance) != 0
-        if c_maintenance_counter >= 0:
-            return False
+        if c_maintenance_counter > 0:
+            return False, all_maintenance, all_maintenance_tats
         if len(all_maintenance) >= slots:
-            return False
+            return False, all_maintenance, all_maintenance_tats
         tat = self.tats[on_maintenance][new_code]
         # se a next tat for -1, metes só phased out
         date = day
+        real_tat = 0
         # self.calendar
-        for _ in range(tat):
-            pass
+        while tat > 0:
+            date = advance_date(date, days=int(1))
+            if self.calendar.calendar[date]['allowed'][
+                    'public holidays'] and self.calendar.calendar[date][
+                        'allowed']['no_weekends']:
+                tat -= 1
+            real_tat += 1
+        all_maintenance_tats[on_maintenance] = real_tat
 
-        # return valid, all_maintenance, all_maintenance_tats
-
-        # if date is on peak season false, else true
-        # TODO: consultar tats e andar N days, separar o allowed da peak season please
-
-        #
-        # for _ in range()
+        if self.calendar.calendar[date]['allowed'][
+                'c_allowed'] and self.calendar.calendar[date]['allowed'][
+                    'c_peak']:
+            return True, all_maintenance, all_maintenance_tats
+        return False, all_maintenance, all_maintenance_tats
 
     def solve(self, node_schedule, type_check='A', limit=1000):
+
         if self.check_solved(node_schedule.calendar):
             return node_schedule
 

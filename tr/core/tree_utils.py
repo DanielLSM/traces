@@ -31,6 +31,7 @@ class NodeScheduleDays(treelib.Node):
         self.count = 0
         self.on_c_maintenance = on_c_maintenance
         self.c_maintenance_counter = c_maintenance_counter
+        self.on_c_maintenance_tats = on_c_maintenance_tats
 
 
 def build_fleet_state(fleet, type_check='A'):
