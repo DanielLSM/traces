@@ -7,11 +7,11 @@ from copy import deepcopy
 from functools import partial
 
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
-from tr.core.tree_utils import NodeScheduleDays, generate_code
+from tr.core.tree_utils import NodeScheduleDays, generate_code, valid_calendar
 
 from tr.core.utils import advance_date
 
-maintenance_actions = [0, 1]  # the order of this list reflects an heuristc btw
+maintenance_actions = [1, 0]  # the order of this list reflects an heuristc btw
 type_checks = ['A', 'C']  # type of checks
 
 
@@ -21,6 +21,8 @@ class TreeDaysPlanner:
         self.fleet = fleet
         self.calendar_tree = {'A': Tree(), 'C': Tree()}
         self.removed_aircrafts = []
+        self.utilization_ratio, self.code_generator, self.tats = self.__build_calendar_helpers(
+        )
 
         for type_check in type_checks:
             fleet_state = build_fleet_state(self.fleet, type_check=type_check)
@@ -36,12 +38,11 @@ class TreeDaysPlanner:
 
             self.calendar_tree[type_check].add_node(root)
 
-        self.utilization_ratio, self.code_generator, self.tats = self.__build_calendar_helpers(
-            fleet_state)
         self.schedule_counter = 0
         self.all_schedules = deque(maxlen=100)  # maintain only the top 10
 
-    def __build_calendar_helpers(self, fleet_state):
+    def __build_calendar_helpers(self):
+        fleet_state = build_fleet_state(self.fleet, type_check='C')
         code_generator = {
             'A': partial(generate_code, 4),
             'C': partial(generate_code, 12)
@@ -132,8 +133,9 @@ class TreeDaysPlanner:
 
     def check_solved(self, current_calendar):
         a = len(current_calendar)
-        b = len(self.calendar.calendar)
-        b = len(range(1000))
+
+        b = len(self.calendar.calendar) - 1
+        # b = len(range(1000))
         if a >= b:
             return True
         return False
@@ -182,6 +184,7 @@ class TreeDaysPlanner:
 
                 valid = self.check_safety_fleet(fleet_state_1)
                 if valid:
+                    calendar_1[day] = {}
                     calendar_1[day]['SLOTS'] = slots
                     calendar_1[day]['MAINTENANCE'] = True
                     calendar_1[day]['ASSIGNMENT'] = on_maintenance
@@ -198,6 +201,7 @@ class TreeDaysPlanner:
                 fleet_state_0 = order_fleet_state(fleet_state_0)
                 valid = self.check_safety_fleet(fleet_state_0)
                 if valid:
+                    calendar_0[day] = {}
                     calendar_0[day]['SLOTS'] = slots
                     calendar_0[day]['MAINTENANCE'] = False
                     calendar_0[day]['ASSIGNMENT'] = on_maintenance
@@ -223,25 +227,35 @@ class TreeDaysPlanner:
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
+        slots = self.get_slots(day, type_check)
+
+        fleet_keys = list(fleet_state_0.keys())
+        for _ in fleet_keys:
+            last_code = self.code_generator['C'](fleet_state_0[_]['C-SN'])
+            if self.tats[_][last_code] == -1:
+                fleet_state_0.pop(_, None)
+                fleet_state_1.pop(_, None)
+                self.removed_aircrafts.append(_)
 
         for _ in on_c_maintenance_0:
+            print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
+            if on_c_maintenance_tats_0[_] < 0:
+                import ipdb
+                ipdb.set_trace()
             on_c_maintenance_tats_0[_] -= 1
             on_c_maintenance_tats_1[_] -= 1
             if on_c_maintenance_tats_0[_] == 0:
-                last_code = fleet_state_1[_]['C-SN']
+                # import ipdb
+                # ipdb.set_trace()
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
                 on_c_maintenance_1.remove(_)
                 on_c_maintenance_tats_1.pop(_, None)
-                if self.tat[_][last_code] == -1:
-                    fleet_state_1.pop(_, None)
-                    fleet_state_0.pop(_, None)
-                    self.removed_aircrafts.append(_)
+                # if self.tat[_][last_code] == -1: easiest bug to solve in my life
 
         if c_maintenance_counter > 0:
-            c_maintenance_counter -= 0
-
-        slots = self.get_slots(day, type_check) + 2
+            c_maintenance_counter -= 1
+            # c_maintenance_counter -= 0 stupidest bug ever...
 
         for action_value in maintenance_actions:
             # if type_check
@@ -253,29 +267,21 @@ class TreeDaysPlanner:
                 new_code = self.code_generator['C'](
                     fleet_state_1[on_maintenance]['C-SN'])
 
-                # import ipdb
-                # ipdb.set_trace()
-                # code_on_maintenance =
                 valid_c, on_c_maintenance_1, real_tats = self.c_allowed(
                     day, on_maintenance, on_c_maintenance_1, slots,
                     c_maintenance_counter, new_code, on_c_maintenance_tats_1)
                 if valid_c:
-                    on_c_maintenance_1.append(on_maintenance)
                     fleet_state_1 = self.fleet_operate_one_day(
                         fleet_state_1, day_old, on_c_maintenance_1, type_check)
                     fleet_state_1 = order_fleet_state(fleet_state_1)
 
                     valid = self.check_safety_fleet(fleet_state_1)
                     if valid:
-                        import ipdb
-                        ipdb.set_trace()
+                        calendar_1[day] = {}
                         calendar_1[day]['SLOTS'] = slots
                         calendar_1[day]['MAINTENANCE'] = True
                         calendar_1[day]['ASSIGNMENT'] = on_maintenance
-                        on_c_maintenance_1.append(on_maintenance)
                         c_maintenance_counter = 3
-                        on_c_maintenance_tats_1[on_c_maintenance_1] = real_tats
-
                         childs.append(
                             NodeScheduleDays(
                                 calendar_1,
@@ -285,41 +291,32 @@ class TreeDaysPlanner:
                                 assignment=on_maintenance,
                                 on_c_maintenance=on_c_maintenance_1,
                                 c_maintenance_counter=c_maintenance_counter,
-                                on_c_maintenance_tats=on_c_maintenance_tats_1))
+                                on_c_maintenance_tats=real_tats))
 
-        if not action_value:
-            fleet_state_0 = self.fleet_operate_one_day(fleet_state_0, day_old,
-                                                       on_c_maintenance_0,
-                                                       type_check)
-            fleet_state_0 = order_fleet_state(fleet_state_0)
-            valid = self.check_safety_fleet(fleet_state_0)
-            if valid:
-                calendar_0[day]['SLOTS'] = slots
-                calendar_0[day]['MAINTENANCE'] = False
-                calendar_0[day]['ASSIGNMENT'] = on_c_maintenance_0
-                childs.append(
-                    NodeScheduleDays(
-                        calendar_1,
-                        day,
-                        fleet_state_1,
-                        action_value,
-                        assignment=[],
-                        on_c_maintenance=on_c_maintenance_0,
-                        c_maintenance_counter=c_maintenance_counter,
-                        on_c_maintenance_tats_0=on_c_maintenance_tats_0))
+            if not action_value:
+                fleet_state_0 = self.fleet_operate_one_day(
+                    fleet_state_0, day_old, on_c_maintenance_0, type_check)
+                fleet_state_0 = order_fleet_state(fleet_state_0)
+                valid = self.check_safety_fleet(fleet_state_0)
+                if valid:
+                    calendar_0[day] = {}
+                    calendar_0[day]['SLOTS'] = slots
+                    calendar_0[day]['MAINTENANCE'] = False
+                    calendar_0[day]['ASSIGNMENT'] = on_c_maintenance_0
+                    childs.append(
+                        NodeScheduleDays(
+                            calendar_0,
+                            day,
+                            fleet_state_0,
+                            action_value,
+                            assignment=[],
+                            on_c_maintenance=on_c_maintenance_0,
+                            c_maintenance_counter=c_maintenance_counter,
+                            on_c_maintenance_tats=on_c_maintenance_tats_0))
         return childs
 
-    # TODO: after this, make a structure on the node to keep
-    # the aircrafts currently in check "currently on maintenance"
-    # then the on_maintenance will be the sum of "currently on maintenance"
-    # and the remaining c_slots possible. to respect the three day rule
-    # also put a counter everytime an aircraft is put in a C_COUNTER
-    # everyday you subtract, when it reaches to 0 you can put another one.
     def c_allowed(self, day, on_maintenance, on_c_maintenance, slots,
                   c_maintenance_counter, new_code, all_maintenance_tats):
-        import ipdb
-        ipdb.set_trace()
-
         all_maintenance = on_c_maintenance
         all_maintenance.append(on_maintenance)
         assert len(all_maintenance) != 0
@@ -347,7 +344,7 @@ class TreeDaysPlanner:
             return True, all_maintenance, all_maintenance_tats
         return False, all_maintenance, all_maintenance_tats
 
-    def solve(self, node_schedule, type_check='A', limit=1000):
+    def solve(self, node_schedule, type_check='A', limit=3000):
 
         if self.check_solved(node_schedule.calendar):
             return node_schedule
@@ -364,7 +361,14 @@ class TreeDaysPlanner:
             self.calendar_tree[type_check][node_schedule.identifier].count += 1
             if self.calendar_tree[type_check][
                     node_schedule.identifier].count > 1:
+                import ipdb
+                ipdb.set_trace()
+                for _ in node_schedule.calendar.keys():
+                    if len(node_schedule.calendar[_]['ASSIGNMENT']) == 3:
+                        print(hey)
                 print("BACKTRACKKKKKKKK")
+                import ipdb
+                ipdb.set_trace()
 
             print("Child is {}, parent is {}".format(child, node_schedule))
             try:
@@ -388,6 +392,8 @@ class TreeDaysPlanner:
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
+        import ipdb
+        ipdb.set_trace()
         a1 = self.calendar_tree[type_check].all_nodes()
         for _ in a1[1].fleet_state.keys():
             print(a1[1].fleet_state[_]['TOTAL-RATIO'])

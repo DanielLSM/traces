@@ -1,6 +1,10 @@
 import treelib
+import pandas as pd
 
 from collections import OrderedDict
+
+from tr.core.parsers import excel_to_book
+from tr.core.resources import f2_out
 
 
 class NodeScheduleDays(treelib.Node):
@@ -14,15 +18,13 @@ class NodeScheduleDays(treelib.Node):
                  identifier=None,
                  on_c_maintenance=[],
                  c_maintenance_counter=0,
-                 on_c_maintenance_tats={},
-                 *args,
-                 **kwargs):
+                 on_c_maintenance_tats={}):
         day_str = day.strftime("%m/%d/%Y")
 
         if tag is None:
             tag = '{}_{}'.format(day_str, action_maintenance)
 
-        super().__init__(tag=tag, *args, **kwargs)
+        super().__init__(tag=tag)
         self.calendar = calendar
         self.day = day
         self.fleet_state = fleet_state
@@ -108,29 +110,41 @@ def generate_code(limit, last_code):
     return code
 
 
-# def build_non_operating_fleet_state(fleet, type_check='C'):
-#     fleet_state = OrderedDict()
-#     for key in fleet.aircraft_info.keys():
-#         fleet_state[key] = {}
-#         fleet_state[key]['DY-C'.format(type_check)] = fleet.aircraft_info[key][
-#             '{}_INITIAL'.format(type_check)]['DY-{}'.format(type_check)]
-#         fleet_state[key]['FH-{}'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['FH-{}'.format(type_check)]
-#         fleet_state[key]['FC-{}'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['FH-{}'.format(type_check)]
-#         fleet_state[key]['DY-{}-MAX'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['{}-CI-DY'.format(type_check)]
-#         fleet_state[key]['FH-{}-MAX'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['{}-CI-FH'.format(type_check)]
-#         fleet_state[key]['FC-{}-MAX'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['{}-CI-FH'.format(type_check)]
-#         fleet_state[key]['{}-SN'.format(
-#             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
-#                 type_check)]['{}-SN'.format(type_check)]
-#         fleet_state[key]['OPERATING'] = True
-#     return fleet_state
+def valid_calendar(calendar):
+    # import ipdb
+    # ipdb.set_trace()
+
+    calendar_book = excel_to_book(f2_out)
+    for _ in calendar_book['C-CHECK LIST']['START']:
+        daterinos = pd.to_datetime(_, format='%m/%d/%Y')
+        for key in calendar.calendar[daterinos]['allowed'].keys():
+            if key != 'a-type':
+                try:
+                    assert calendar.calendar[daterinos]['allowed'][key] == True
+                except:
+                    import ipdb
+                    ipdb.set_trace()
+
+    for _ in calendar_book['C-CHECK LIST']['END']:
+        daterinos = pd.to_datetime(_, format='%m/%d/%Y')
+        for key in calendar.calendar[daterinos]['allowed'].keys():
+            if key != 'a-type':
+                try:
+                    assert calendar.calendar[daterinos]['allowed'][key] == True
+                except:
+                    import ipdb
+                    ipdb.set_trace()
+
+    # import ipdb
+    # ipdb.set_trace()
+    # assert self.calendar[daterinos]['allowed']['c-type'] == False
+    # assert self.calendar[daterinos]['allowed']['c_allowed'] == False
+    # assert self.calendar[daterinos]['allowed']['c_peak'] == False
+    # assert self.calendar[daterinos]['allowed']['no_weekends'] == False
+    # assert self.calendar[daterinos]['resources']['slots']['c-type'] == 1
+
+
+if __name__ == '__main__':
+
+    book = excel_to_book(f2_out)
+    valid_calendar(book)

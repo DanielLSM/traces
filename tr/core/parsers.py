@@ -9,8 +9,6 @@ from tr.core.utils import advance_date, days_between_dates, convert_iso_to_times
 
 from collections import OrderedDict, defaultdict
 
-# collection of APIs from in and out of python
-
 
 def excel_to_book(file_input: str):
     print("INFO: parsing xlsx to runtime book")
@@ -54,7 +52,7 @@ def book_to_kwargs_MPO(book):
     }
     m_type_restriction['all'] = {'time': all_time}
 
-    end = datetime.datetime(2022, 2, 1, 0, 0)
+    end = datetime.datetime(2022, 1, 1, 0, 0)
     start_date = pd.to_datetime(book['ADDITIONAL'][2019][1])
     end_date = pd.to_datetime(end)
 

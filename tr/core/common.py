@@ -102,7 +102,7 @@ class Calendar:
         print("#########################")
         self.calendar = calendar
         print("INFO: calendar complete!")
-        self.test()
+        # self.test()
 
     @staticmethod
     def restrict_calendar(calendar, restrict_list, info='not allowed'):
@@ -140,8 +140,10 @@ class Calendar:
         return calendar
 
     def test(self):
-        iso_str = '4/14/2019'
+        iso_str = '6/3/2019'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        import ipdb
+        ipdb.set_trace()
         assert self.calendar[daterinos]['allowed']['c-type'] == False
         assert self.calendar[daterinos]['allowed']['c_allowed'] == False
         assert self.calendar[daterinos]['allowed']['c_peak'] == False
