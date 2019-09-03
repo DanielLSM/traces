@@ -1,4 +1,5 @@
 import treelib
+import pandas as pd
 
 from treelib import Tree
 from tqdm import tqdm
@@ -9,7 +10,7 @@ from functools import partial
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
 from tr.core.tree_utils import NodeScheduleDays, generate_code, valid_calendar
 
-from tr.core.utils import advance_date
+from tr.core.utils import advance_date, save_pickle, load_pickle
 
 maintenance_actions = [1, 0]  # the order of this list reflects an heuristc btw
 type_checks = ['A', 'C']  # type of checks
@@ -20,9 +21,17 @@ class TreeDaysPlanner:
         self.calendar = calendar
         self.fleet = fleet
         self.calendar_tree = {'A': Tree(), 'C': Tree()}
+        # self.final_schedule = {'A': {}, 'C': {}}
+        try:
+            self.final_calendar = load_pickle("c_checks.pkl")
+        except:
+            self.final_calendar = {'A': {}, 'C': {}}
+
         self.removed_aircrafts = []
-        self.utilization_ratio, self.code_generator, self.tats = self.__build_calendar_helpers(
-        )
+        self.utilization_ratio, self.code_generator, self.tats, self.finale_schedule = \
+            self.__build_calendar_helpers()
+
+        self.daterinos_start = valid_calendar(self.calendar)
 
         for type_check in type_checks:
             fleet_state = build_fleet_state(self.fleet, type_check=type_check)
@@ -49,8 +58,10 @@ class TreeDaysPlanner:
         }
         utilization_ratio = OrderedDict()
         tats = OrderedDict()
+        finale_schedule = OrderedDict()
         for _ in self.fleet.aircraft_info.keys():
             utilization_ratio[_] = {}
+            finale_schedule[_] = {}
             utilization_ratio[_]['DFH'] = self.fleet.aircraft_info[_]['DFH']
             utilization_ratio[_]['DFC'] = self.fleet.aircraft_info[_]['DFC']
 
@@ -63,7 +74,7 @@ class TreeDaysPlanner:
                 new_code = code_generator['C'](new_code)
                 tats[_][new_code] = c_elapsed_time[tat]
 
-        return utilization_ratio, code_generator, tats
+        return utilization_ratio, code_generator, tats, finale_schedule
 
     # exceptions is a list of aircrafts that is in maintenance, thus not operating
     def fleet_operate_one_day(self,
@@ -132,13 +143,21 @@ class TreeDaysPlanner:
         return True
 
     def check_solved(self, current_calendar):
-        a = len(current_calendar)
-
-        b = len(self.calendar.calendar) - 1
-        # b = len(range(1000))
-        if a >= b:
-            return True
+        iso_str = '1/1/2022'
+        daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        if len(current_calendar) > 0:
+            if list(current_calendar.keys())[-1] == daterinos:
+                return True
+            else:
+                return False
         return False
+        # a = len(current_calendar)
+
+        # b = len(self.calendar.calendar) - 1
+        # # b = len(range(1000))
+        # if a >= b:
+        #     return True
+        # return False
 
     def get_slots(self, date, check_type):
 
@@ -167,11 +186,12 @@ class TreeDaysPlanner:
         calendar_1 = deepcopy(node_schedule.calendar)
         fleet_state_0 = deepcopy(node_schedule.fleet_state)
         fleet_state_1 = deepcopy(node_schedule.fleet_state)
+        self.calendar
         day = node_schedule.day
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
-        slots = self.get_slots(day, type_check) + 2
+        slots = self.get_slots(day, type_check)
         for action_value in maintenance_actions:
             # if type_check
             if action_value and self.calendar.calendar[day]['allowed'][
@@ -228,10 +248,17 @@ class TreeDaysPlanner:
         childs = []
         day = advance_date(day, days=int(1))
         slots = self.get_slots(day, type_check)
+        iso_str = '7/1/2021'
+        daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        if day == daterinos:
+            import ipdb
+            ipdb.set_trace()
+            slots += 2
 
         fleet_keys = list(fleet_state_0.keys())
         for _ in fleet_keys:
             last_code = self.code_generator['C'](fleet_state_0[_]['C-SN'])
+            # last_code = fleet_state_0[_]['C-SN']
             if self.tats[_][last_code] == -1:
                 fleet_state_0.pop(_, None)
                 fleet_state_1.pop(_, None)
@@ -281,6 +308,11 @@ class TreeDaysPlanner:
                         calendar_1[day]['SLOTS'] = slots
                         calendar_1[day]['MAINTENANCE'] = True
                         calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                        calendar_1[day]['ASSIGNED STATE'] = {}
+                        calendar_1[day]['ASSIGNED STATE'][
+                            'STATE'] = fleet_state_1[on_maintenance]
+                        calendar_1[day]['ASSIGNED STATE']['TAT'] = real_tats[
+                            on_maintenance]
                         c_maintenance_counter = 3
                         childs.append(
                             NodeScheduleDays(
@@ -302,7 +334,7 @@ class TreeDaysPlanner:
                     calendar_0[day] = {}
                     calendar_0[day]['SLOTS'] = slots
                     calendar_0[day]['MAINTENANCE'] = False
-                    calendar_0[day]['ASSIGNMENT'] = on_c_maintenance_0
+                    calendar_0[day]['ASSIGNMENT'] = None
                     childs.append(
                         NodeScheduleDays(
                             calendar_0,
@@ -313,10 +345,14 @@ class TreeDaysPlanner:
                             on_c_maintenance=on_c_maintenance_0,
                             c_maintenance_counter=c_maintenance_counter,
                             on_c_maintenance_tats=on_c_maintenance_tats_0))
+
         return childs
 
     def c_allowed(self, day, on_maintenance, on_c_maintenance, slots,
                   c_maintenance_counter, new_code, all_maintenance_tats):
+        # if day in self.daterinos_start:
+        #     import ipdb
+        #     ipdb.set_trace()
         all_maintenance = on_c_maintenance
         all_maintenance.append(on_maintenance)
         assert len(all_maintenance) != 0
@@ -361,14 +397,14 @@ class TreeDaysPlanner:
             self.calendar_tree[type_check][node_schedule.identifier].count += 1
             if self.calendar_tree[type_check][
                     node_schedule.identifier].count > 1:
-                import ipdb
-                ipdb.set_trace()
-                for _ in node_schedule.calendar.keys():
-                    if len(node_schedule.calendar[_]['ASSIGNMENT']) == 3:
-                        print(hey)
+                # import ipdb
+                # ipdb.set_trace()
+                # for _ in node_schedule.calendar.keys():
+                #     if len(node_schedule.calendar[_]['ASSIGNMENT']) == 3:
+                #         print(hey)
+                # import ipdb
+                # ipdb.set_trace()
                 print("BACKTRACKKKKKKKK")
-                import ipdb
-                ipdb.set_trace()
 
             print("Child is {}, parent is {}".format(child, node_schedule))
             try:
@@ -392,23 +428,33 @@ class TreeDaysPlanner:
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
+        final_schedule = self.calendar_to_schedule(result)
+        self.final_schedule_to_excel(final_schedule, type_check)
+        self.final_calendar[type_check] = result.calendar
+        save_pickle(self.final_calendar, "c_checks.pkl")
         import ipdb
         ipdb.set_trace()
-        a1 = self.calendar_tree[type_check].all_nodes()
-        for _ in a1[1].fleet_state.keys():
-            print(a1[1].fleet_state[_]['TOTAL-RATIO'])
-
-        score = self.calendar_score(result, type_check=type_check)
-        self.calendar_tree[type_check].show(nid=result.identifier)
+        # result = self.solve(root, type_check='A')
+        # score = self.calendar_score(result, type_check=type_check)
+        # self.calendar_tree[type_check].show(nid=result.identifier)
         # A optmized: (13261, 9134.300000000052, 103953.90000000001)
         # A non-optimized: (55577, 254913.6, 365113.99999999936)
-
-        import ipdb
-        ipdb.set_trace()
-
-        node_schedule_to_excel(result, type)
-
         return result
+
+    def calendar_to_schedule(self, node_schedule, type_check='C'):
+        calendar = deepcopy(node_schedule.calendar)
+        schedule = deepcopy(self.finale_schedule)
+        # import ipdb
+        # ipdb.set_trace()
+        for _ in calendar.keys():
+            aircraft = calendar[_]['ASSIGNMENT']
+            if aircraft is not None:
+                schedule[aircraft][_] = {}
+                schedule[aircraft][_]['STATE'] = calendar[_]['ASSIGNED STATE'][
+                    'STATE']
+                schedule[aircraft][_]['TAT'] = calendar[_]['ASSIGNED STATE'][
+                    'TAT']
+        return schedule
 
     def calendar_score(self, node_schedule, type_check='A'):
         score_waste_DY = 0
@@ -436,7 +482,60 @@ class TreeDaysPlanner:
         pass
 
     # TODO need to fix the C_elapsed_time
-    def node_schedule_to_excel(self, node_schedule):
-        excel_schedule = {}
-        calendar = node_schedule.calendar
-        fleet_state = node_schedule.fleet_state
+    def final_schedule_to_excel(self, final_schedule, type_check='C'):
+        # import ipdb
+        # ipdb.set_trace()
+        print("INFO: Saving xlsx files")
+        dict1 = OrderedDict()
+        # dict1['Fleet'] = []
+        dict1['A/C ID'] = []
+        dict1['START'] = []
+        dict1['END'] = []
+        dict1['DY'] = []
+        dict1['FH'] = []
+        dict1['FC'] = []
+        dict1['DY LOST'] = []
+        dict1['FH LOST'] = []
+        dict1['FC LOST'] = []
+        for aircraft in final_schedule.keys():
+            for _ in final_schedule[aircraft].keys():
+                # dict1['Fleet'].append(aircraft[0:4])
+                dict1['A/C ID'].append(aircraft)
+                dict1['START'].append(pd.to_datetime(_, format='%m/%d/%Y'))
+                tat = final_schedule[aircraft][_]['TAT']
+                end_date = advance_date(_, days=tat)
+                dict1['END'].append(pd.to_datetime(end_date,
+                                                   format='%m/%d/%Y'))
+                waste_dy = final_schedule[aircraft][_]['STATE'][
+                    'DY-{}-WASTE'.format(type_check)]
+                waste_fh = final_schedule[aircraft][_]['STATE'][
+                    'FH-{}-WASTE'.format(type_check)]
+                waste_fc = final_schedule[aircraft][_]['STATE'][
+                    'FC-{}-WASTE'.format(type_check)]
+                max_dy = final_schedule[aircraft][_]['STATE'][
+                    'DY-{}-MAX'.format(type_check)]
+                max_fh = final_schedule[aircraft][_]['STATE'][
+                    'FH-{}-MAX'.format(type_check)]
+                max_fc = final_schedule[aircraft][_]['STATE'][
+                    'FC-{}-MAX'.format(type_check)]
+                if waste_dy < 0:
+                    waste_dy = 0
+                if waste_fh < 0:
+                    waste_fh = 0
+                if waste_fc < 0:
+                    waste_fc = 0
+                dy = max_dy - waste_dy
+                fh = max_fh - waste_fh
+                fc = max_fc - waste_fc
+
+                dict1['DY'].append(dy)
+                dict1['FH'].append(fh)
+                dict1['FC'].append(fc)
+                dict1['DY LOST'].append(waste_dy)
+                dict1['FH LOST'].append(waste_fh)
+                dict1['FC LOST'].append(waste_fc)
+
+        df = pd.DataFrame(dict1, columns=dict1.keys())
+
+        print(df)
+        df.to_excel('checks.xlsx')

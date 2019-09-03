@@ -18,7 +18,8 @@ class NodeScheduleDays(treelib.Node):
                  identifier=None,
                  on_c_maintenance=[],
                  c_maintenance_counter=0,
-                 on_c_maintenance_tats={}):
+                 on_c_maintenance_tats={},
+                 merged_with_c=[]):
         day_str = day.strftime("%m/%d/%Y")
 
         if tag is None:
@@ -34,6 +35,7 @@ class NodeScheduleDays(treelib.Node):
         self.on_c_maintenance = on_c_maintenance
         self.c_maintenance_counter = c_maintenance_counter
         self.on_c_maintenance_tats = on_c_maintenance_tats
+        self.merged_with_c = merged_with_c
 
 
 def build_fleet_state(fleet, type_check='A'):
@@ -114,9 +116,11 @@ def valid_calendar(calendar):
     # import ipdb
     # ipdb.set_trace()
 
+    daterinos_start = []
     calendar_book = excel_to_book(f2_out)
     for _ in calendar_book['C-CHECK LIST']['START']:
         daterinos = pd.to_datetime(_, format='%m/%d/%Y')
+        daterinos_start.append(daterinos)
         for key in calendar.calendar[daterinos]['allowed'].keys():
             if key != 'a-type':
                 try:
@@ -134,6 +138,7 @@ def valid_calendar(calendar):
                 except:
                     import ipdb
                     ipdb.set_trace()
+    return daterinos_start
 
     # import ipdb
     # ipdb.set_trace()
