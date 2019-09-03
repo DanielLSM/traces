@@ -38,6 +38,154 @@ class NodeScheduleDays(treelib.Node):
         self.merged_with_c = merged_with_c
 
 
+def fleet_operate_A(**kwargs):
+    #  kwargs = {
+    #         'fleet_state': fleet_state,
+    #         'date': date,
+    #         'on_maintenance': on_maintenance,
+    #         'type_check': type_check
+    #         'utilization_ratio':self.utilization_ratio,
+    #         'code_generator': self.code_generator
+    #     }
+
+    fleet_state = kwargs['fleet_state']
+    date = kwargs['date']
+    on_maintenance = kwargs['on_maintenance']
+    type_check = kwargs['type_check']
+    utilization_ratio = kwargs['utilization_ratio']
+    code_generator = kwargs['code_generator']
+
+    for aircraft in fleet_state.keys():
+        if aircraft in on_maintenance:
+            # dont worry with this if, an aircraft will never be selected
+            # on A-check again, but in C-check will
+            if fleet_state[aircraft]['OPERATING']:
+                fleet_state[aircraft]['DY-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['DY-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['DY-{}'.format(
+                            type_check)]
+                fleet_state[aircraft]['FH-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['FH-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['FH-{}'.format(
+                            type_check)]
+                fleet_state[aircraft]['FC-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['FC-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['FC-{}'.format(
+                            type_check)]
+                code = fleet_state[aircraft]['{}-SN'.format(type_check)]
+                fleet_state[aircraft]['{}-SN'.format(
+                    type_check)] = code_generator[type_check](code)
+                # fleet_state[aircraft]['DY-{}'.format(type_check)] = fleet_state[aircraft]['DY-{}'.format(type_check)]
+                # fleet_state[aircraft]['FH-{}'.format(type_check)] = fleet_state[aircraft]['FH-{}'.format(type_check)]
+                # fleet_state[aircraft]['FC-{}'.format(type_check)] = fleet_state[aircraft]['FC-{}'.format(type_check)]
+                fleet_state[aircraft]['OPERATING'] = False
+            fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
+            fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
+            fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
+        else:
+            fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
+            month = (date.month_name()[0:3]).upper()
+            fleet_state[aircraft]['FH-{}'.format(
+                type_check)] += utilization_ratio[aircraft]['DFH'][month]
+            fleet_state[aircraft]['FC-{}'.format(
+                type_check)] += utilization_ratio[aircraft]['DFC'][month]
+            fleet_state[aircraft]['OPERATING'] = True
+
+        fleet_state[aircraft]['DY-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['DY-{}'.format(
+                type_check)] / fleet_state[aircraft]['DY-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['FH-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['FH-{}'.format(
+                type_check)] / fleet_state[aircraft]['FH-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['FC-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['FC-{}'.format(
+                type_check)] / fleet_state[aircraft]['FC-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['TOTAL-RATIO'] = max([
+            fleet_state[aircraft]['DY-{}-RATIO'.format(type_check)],
+            fleet_state[aircraft]['FH-{}-RATIO'.format(type_check)],
+            fleet_state[aircraft]['FC-{}-RATIO'.format(type_check)]
+        ])
+    return fleet_state
+
+
+def fleet_operate_C(**kwargs):
+    #  kwargs = {
+    #         'fleet_state': fleet_state,
+    #         'date': date,
+    #         'on_maintenance': on_maintenance,
+    #         'type_check': type_check
+    #         'utilization_ratio':self.utilization_ratio,
+    #         'code_generator': self.code_generator
+    #     }
+
+    fleet_state = kwargs['fleet_state']
+    date = kwargs['date']
+    on_maintenance = kwargs['on_maintenance']
+    type_check = kwargs['type_check']
+    utilization_ratio = kwargs['utilization_ratio']
+    code_generator = kwargs['code_generator']
+
+    # import ipdb
+    # ipdb.set_trace()
+    for aircraft in fleet_state.keys():
+        if aircraft in on_maintenance:
+            # dont worry with this if, an aircraft will never be selected
+            # on A-check again, but in C-check will
+            if fleet_state[aircraft]['OPERATING']:
+                fleet_state[aircraft]['DY-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['DY-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['DY-{}'.format(
+                            type_check)]
+                fleet_state[aircraft]['FH-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['FH-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['FH-{}'.format(
+                            type_check)]
+                fleet_state[aircraft]['FC-{}-WASTE'.format(
+                    type_check)] = fleet_state[aircraft]['FC-{}-MAX'.format(
+                        type_check)] - fleet_state[aircraft]['FC-{}'.format(
+                            type_check)]
+                code = fleet_state[aircraft]['{}-SN'.format(type_check)]
+                fleet_state[aircraft]['{}-SN'.format(
+                    type_check)] = code_generator[type_check](code)
+                # fleet_state[aircraft]['DY-{}'.format(type_check)] = fleet_state[aircraft]['DY-{}'.format(type_check)]
+                # fleet_state[aircraft]['FH-{}'.format(type_check)] = fleet_state[aircraft]['FH-{}'.format(type_check)]
+                # fleet_state[aircraft]['FC-{}'.format(type_check)] = fleet_state[aircraft]['FC-{}'.format(type_check)]
+                fleet_state[aircraft]['OPERATING'] = False
+            fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
+            fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
+            fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
+        else:
+            fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
+            month = (date.month_name()[0:3]).upper()
+            fleet_state[aircraft]['FH-{}'.format(
+                type_check)] += utilization_ratio[aircraft]['DFH'][month]
+            fleet_state[aircraft]['FC-{}'.format(
+                type_check)] += utilization_ratio[aircraft]['DFC'][month]
+            fleet_state[aircraft]['OPERATING'] = True
+
+        fleet_state[aircraft]['DY-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['DY-{}'.format(
+                type_check)] / fleet_state[aircraft]['DY-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['FH-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['FH-{}'.format(
+                type_check)] / fleet_state[aircraft]['FH-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['FC-{}-RATIO'.format(
+            type_check)] = fleet_state[aircraft]['FC-{}'.format(
+                type_check)] / fleet_state[aircraft]['FC-{}-MAX'.format(
+                    type_check)]
+        fleet_state[aircraft]['TOTAL-RATIO'] = max([
+            fleet_state[aircraft]['DY-{}-RATIO'.format(type_check)],
+            fleet_state[aircraft]['FH-{}-RATIO'.format(type_check)],
+            fleet_state[aircraft]['FC-{}-RATIO'.format(type_check)]
+        ])
+    return fleet_state
+
+
 def build_fleet_state(fleet, type_check='A'):
     fleet_state = OrderedDict()
     for key in fleet.aircraft_info.keys():

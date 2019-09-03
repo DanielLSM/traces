@@ -9,6 +9,7 @@ from functools import partial
 
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
 from tr.core.tree_utils import NodeScheduleDays, generate_code, valid_calendar
+from tr.core.tree_utils import fleet_operate_A, fleet_operate_C
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
@@ -24,6 +25,7 @@ class TreeDaysPlanner:
         # self.final_schedule = {'A': {}, 'C': {}}
         try:
             self.final_calendar = load_pickle("c_checks.pkl")
+            # self.final_calendar = {'A': {}, 'C': {}}
         except:
             self.final_calendar = {'A': {}, 'C': {}}
 
@@ -31,7 +33,7 @@ class TreeDaysPlanner:
         self.utilization_ratio, self.code_generator, self.tats, self.finale_schedule = \
             self.__build_calendar_helpers()
 
-        self.daterinos_start = valid_calendar(self.calendar)
+        # self.daterinos_start = valid_calendar(self.calendar)
 
         for type_check in type_checks:
             fleet_state = build_fleet_state(self.fleet, type_check=type_check)
@@ -82,58 +84,20 @@ class TreeDaysPlanner:
                               date,
                               on_maintenance=[],
                               type_check='A'):
-        for aircraft in fleet_state.keys():
-            if aircraft in on_maintenance:
-                # dont worry with this if, an aircraft will never be selected
-                # on A-check again, but in C-check will
-                if fleet_state[aircraft]['OPERATING']:
-                    fleet_state[aircraft]['DY-{}-WASTE'.format(
-                        type_check)] = fleet_state[aircraft][
-                            'DY-{}-MAX'.format(type_check)] - fleet_state[
-                                aircraft]['DY-{}'.format(type_check)]
-                    fleet_state[aircraft]['FH-{}-WASTE'.format(
-                        type_check)] = fleet_state[aircraft][
-                            'FH-{}-MAX'.format(type_check)] - fleet_state[
-                                aircraft]['FH-{}'.format(type_check)]
-                    fleet_state[aircraft]['FC-{}-WASTE'.format(
-                        type_check)] = fleet_state[aircraft][
-                            'FC-{}-MAX'.format(type_check)] - fleet_state[
-                                aircraft]['FC-{}'.format(type_check)]
-                    code = fleet_state[aircraft]['{}-SN'.format(type_check)]
-                    fleet_state[aircraft]['{}-SN'.format(
-                        type_check)] = self.code_generator[type_check](code)
-                    fleet_state[aircraft]['OPERATING'] = False
-                fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
-                fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
-                fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
-            else:
-                fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
-                month = (date.month_name()[0:3]).upper()
-                fleet_state[aircraft]['FH-{}'.format(
-                    type_check
-                )] += self.utilization_ratio[aircraft]['DFH'][month]
-                fleet_state[aircraft]['FC-{}'.format(
-                    type_check
-                )] += self.utilization_ratio[aircraft]['DFC'][month]
-                fleet_state[aircraft]['OPERATING'] = True
-
-            fleet_state[aircraft]['DY-{}-RATIO'.format(
-                type_check)] = fleet_state[aircraft]['DY-{}'.format(
-                    type_check)] / fleet_state[aircraft]['DY-{}-MAX'.format(
-                        type_check)]
-            fleet_state[aircraft]['FH-{}-RATIO'.format(
-                type_check)] = fleet_state[aircraft]['FH-{}'.format(
-                    type_check)] / fleet_state[aircraft]['FH-{}-MAX'.format(
-                        type_check)]
-            fleet_state[aircraft]['FC-{}-RATIO'.format(
-                type_check)] = fleet_state[aircraft]['FC-{}'.format(
-                    type_check)] / fleet_state[aircraft]['FC-{}-MAX'.format(
-                        type_check)]
-            fleet_state[aircraft]['TOTAL-RATIO'] = max([
-                fleet_state[aircraft]['DY-{}-RATIO'.format(type_check)],
-                fleet_state[aircraft]['FH-{}-RATIO'.format(type_check)],
-                fleet_state[aircraft]['FC-{}-RATIO'.format(type_check)]
-            ])
+        kwargs = {
+            'fleet_state': fleet_state,
+            'date': date,
+            'on_maintenance': on_maintenance,
+            'type_check': type_check,
+            'utilization_ratio': self.utilization_ratio,
+            'code_generator': self.code_generator
+        }
+        # import ipdb
+        # ipdb.set_trace()
+        if type_check == 'A':
+            fleet_state = fleet_operate_A(**kwargs)
+        elif type_check == 'C':
+            fleet_state = fleet_operate_C(**kwargs)
         return fleet_state
 
     def check_safety_fleet(self, fleet_state):
@@ -172,7 +136,6 @@ class TreeDaysPlanner:
 
     # there is no variables, just one bolean variable, do maintenance or not
     def expand_with_heuristic(self, node_schedule, type_check='A'):
-
         if type_check == 'A':
             childs = self.expand_a(node_schedule, type_check)
         elif type_check == 'C':
@@ -186,12 +149,16 @@ class TreeDaysPlanner:
         calendar_1 = deepcopy(node_schedule.calendar)
         fleet_state_0 = deepcopy(node_schedule.fleet_state)
         fleet_state_1 = deepcopy(node_schedule.fleet_state)
-        self.calendar
         day = node_schedule.day
         day_old = day
         childs = []
         day = advance_date(day, days=int(1))
         slots = self.get_slots(day, type_check)
+        import ipdb
+        ipdb.set_trace()
+        on_c_calendar = self.final_calendar['C'][day]['ASSIGNMENT']
+        on_c_calendar = self.final_calendar['C'][day]['ASSIGNMENT']
+
         for action_value in maintenance_actions:
             # if type_check
             if action_value and self.calendar.calendar[day]['allowed'][
@@ -350,9 +317,6 @@ class TreeDaysPlanner:
 
     def c_allowed(self, day, on_maintenance, on_c_maintenance, slots,
                   c_maintenance_counter, new_code, all_maintenance_tats):
-        # if day in self.daterinos_start:
-        #     import ipdb
-        #     ipdb.set_trace()
         all_maintenance = on_c_maintenance
         all_maintenance.append(on_maintenance)
         assert len(all_maintenance) != 0
@@ -428,10 +392,13 @@ class TreeDaysPlanner:
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
+        import ipdb
+        ipdb.set_trace()
+
         final_schedule = self.calendar_to_schedule(result)
         self.final_schedule_to_excel(final_schedule, type_check)
         self.final_calendar[type_check] = result.calendar
-        save_pickle(self.final_calendar, "c_checks.pkl")
+        save_pickle(self.final_calendar, "{}_checks.pkl".format(type_check))
         import ipdb
         ipdb.set_trace()
         # result = self.solve(root, type_check='A')
