@@ -428,9 +428,9 @@ class TreeDaysPlanner:
                 ipdb.set_trace()
                 print(e)
             print("Depth:{}".format(self.calendar_tree[type_check].depth()))
-            if self.calendar_tree[type_check].depth() == 950:
-                global maintenance_actions
-                maintenance_actions = [0, 1]
+            # if self.calendar_tree[type_check].depth() == 950:
+            #     global maintenance_actions
+            #     maintenance_actions = [0, 1]
 
             next_node = self.solve(child,
                                    type_check=type_check,
@@ -458,21 +458,22 @@ class TreeDaysPlanner:
         # A non-optimized: (55577, 254913.6, 365113.99999999936)
         return result
 
-    def calendar_to_schedule(self, node_schedule, type_check='C'):
+    def calendar_to_schedule(self, node_schedule, type_check='A'):
         calendar = deepcopy(node_schedule.calendar)
         schedule = deepcopy(self.finale_schedule)
         for _ in calendar.keys():
             aircraft = calendar[_]['ASSIGNMENT']
             try:
                 if aircraft is not None:
-                    for ac in aircraft:
-                        schedule[ac][_] = {}
-                        if type_check == 'C':
-                            schedule[ac][_]['STATE'] = calendar[_][
-                                'ASSIGNED STATE']['STATE']
-                            schedule[ac][_]['TAT'] = calendar[_][
-                                'ASSIGNED STATE']['TAT']
-                        elif type_check == 'A':
+                    if type_check == 'C':
+                        schedule[aircraft][_] = {}
+                        schedule[aircraft][_]['STATE'] = calendar[_][
+                            'ASSIGNED STATE']['STATE']
+                        schedule[aircraft][_]['TAT'] = calendar[_][
+                            'ASSIGNED STATE']['TAT']
+                    elif type_check == 'A':
+                        for ac in aircraft:
+                            schedule[ac][_] = {}
                             schedule[ac][_]['STATE'] = calendar[_][
                                 'ASSIGNED STATE'][ac]
 
