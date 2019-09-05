@@ -21,8 +21,8 @@ class NodeScheduleDays(treelib.Node):
                  on_c_maintenance_tats={},
                  merged_with_c=[],
                  on_maintenance_merged=[],
-                 fleet_state_phasing={},
-                 phased_out = {}):
+                 fleet_phasing_out={},
+                 phased_out={}):
         day_str = day.strftime("%m/%d/%Y")
 
         if tag is None:
@@ -32,7 +32,7 @@ class NodeScheduleDays(treelib.Node):
         self.calendar = calendar
         self.day = day
         self.fleet_state = fleet_state
-        self.fleet_state_phasing = fleet_state_phasing 
+        self.fleet_phasing_out = fleet_phasing_out
         self.assignment = assignment  # state of the world
         self.action_maintenance = action_maintenance
         self.count = 0
@@ -85,15 +85,21 @@ def fleet_operate_A(**kwargs):
                 fleet_state[aircraft]['{}-SN'.format(
                     type_check)] = code_generator[type_check](code)
                 fleet_state[aircraft]['OPERATING'] = False
-        
+
             fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
             fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
             fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
         else:
             if aircraft in on_c_maintenance:
-                fleet_state[aircraft]['DY-{}'.format(type_check)] = fleet_state[aircraft]['DY-{}'.format(type_check)]
-                fleet_state[aircraft]['FH-{}'.format(type_check)] = fleet_state[aircraft]['FH-{}'.format(type_check)]
-                fleet_state[aircraft]['FC-{}'.format(type_check)] = fleet_state[aircraft]['FC-{}'.format(type_check)]
+                fleet_state[aircraft]['DY-{}'.format(
+                    type_check)] = fleet_state[aircraft]['DY-{}'.format(
+                        type_check)]
+                fleet_state[aircraft]['FH-{}'.format(
+                    type_check)] = fleet_state[aircraft]['FH-{}'.format(
+                        type_check)]
+                fleet_state[aircraft]['FC-{}'.format(
+                    type_check)] = fleet_state[aircraft]['FC-{}'.format(
+                        type_check)]
             else:
                 fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
                 month = (date.month_name()[0:3]).upper()
@@ -220,8 +226,10 @@ def build_fleet_state(fleet, type_check='A'):
         fleet_state[key]['FC-{}-MAX'.format(
             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
                 type_check)]['{}-CI-FH'.format(type_check)]
-        fleet_state[key]['A-SN'] = fleet.aircraft_info[key]['A_INITIAL']['A-SN']
-        fleet_state[key]['C-SN'] = fleet.aircraft_info[key]['C_INITIAL']['C-SN']
+        fleet_state[key]['A-SN'] = fleet.aircraft_info[key]['A_INITIAL'][
+            'A-SN']
+        fleet_state[key]['C-SN'] = fleet.aircraft_info[key]['C_INITIAL'][
+            'C-SN']
         fleet_state[key]['{}-SN'.format(
             type_check)] = fleet.aircraft_info[key]['{}_INITIAL'.format(
                 type_check)]['{}-SN'.format(type_check)]
