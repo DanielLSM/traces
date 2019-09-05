@@ -20,7 +20,9 @@ class NodeScheduleDays(treelib.Node):
                  c_maintenance_counter=0,
                  on_c_maintenance_tats={},
                  merged_with_c=[],
-                 on_maintenance_merged=[]):
+                 on_maintenance_merged=[],
+                 fleet_state_phasing={},
+                 phased_out = {}):
         day_str = day.strftime("%m/%d/%Y")
 
         if tag is None:
@@ -30,6 +32,7 @@ class NodeScheduleDays(treelib.Node):
         self.calendar = calendar
         self.day = day
         self.fleet_state = fleet_state
+        self.fleet_state_phasing = fleet_state_phasing 
         self.assignment = assignment  # state of the world
         self.action_maintenance = action_maintenance
         self.count = 0
@@ -38,6 +41,7 @@ class NodeScheduleDays(treelib.Node):
         self.on_c_maintenance_tats = on_c_maintenance_tats
         self.merged_with_c = merged_with_c
         self.on_maintenance_merged = on_maintenance_merged
+        self.phased_out = phased_out
 
 
 def fleet_operate_A(**kwargs):
