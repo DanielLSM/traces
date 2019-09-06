@@ -8,6 +8,17 @@ the approach is as follows:
 Note: the number of actions depends on the number of slots available, so its always varying... In reality, lets say for A-Checks/C-Checks it depends on the number of slots,
 so if at any day there are 3 slots, there are actually 4 actions: 0,1,2,3 slots
 
+D check slots:
+Every C check counts as a D cycle, and every D check counts as a C cycle, if it reaches a maximum of
+D-END = 4, it phases out.
+
+D-MAX : the 3rd or the 4th will be D check
+
+when we do a D check, D-cycle resets to 1
+
+its either when it reaches to 4 or when it reaches the maximum amount of days
+
+
 C check slots:
 0.0) All aircrafts are operating on day one. (unless it states a future date on OPERATION)
 0) on C_initial, some of the planes are past their due dates in FH/FC/DY, this is not valid so they should immediatily go to maintenance. Then the quantity they passed after the C-ccheck, should be discounted on the next C-check. Columns C_TOLU-DY/FH/FC tell how much tolerance was used in the previous check. This value has to be subtracted for the next check and should not be used again on the planning horizon.: 1

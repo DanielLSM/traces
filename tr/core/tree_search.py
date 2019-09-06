@@ -10,6 +10,7 @@ from functools import partial
 from tr.core.tree_utils import build_fleet_state, order_fleet_state
 from tr.core.tree_utils import NodeScheduleDays, generate_code, valid_calendar
 from tr.core.tree_utils import fleet_operate_A, fleet_operate_C
+from tr.core.tree_utils import generate_D_check_code
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
@@ -29,12 +30,11 @@ class TreeDaysPlanner:
         self.daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         self.removed_aircrafts = OrderedDict()
         # self.final_schedule = {'A': {}, 'C': {}}
+        import ipdb
+        ipdb.set_trace()
         try:
             self.phased_out = load_pickle("phased_out")
             self.final_calendar = load_pickle("c_checks.pkl")
-            # import ipdb
-            # ipdb.set_trace()
-            # self.final_calendar = {'A': {}, 'C': {}}
         except:
             self.phased_out = OrderedDict()
             self.final_calendar = {'A': {}, 'C': {}}
@@ -93,7 +93,8 @@ class TreeDaysPlanner:
                               date,
                               on_maintenance=[],
                               type_check='A',
-                              on_c_maintenance=[]):
+                              on_c_maintenance=[],
+                              type_D_check=False):
         kwargs = {
             'fleet_state': fleet_state,
             'date': date,
@@ -106,6 +107,7 @@ class TreeDaysPlanner:
         if type_check == 'A':
             fleet_state = fleet_operate_A(**kwargs)
         elif type_check == 'C':
+            kwargs['type_D_check'] = type_D_check
             fleet_state = fleet_operate_C(**kwargs)
         return fleet_state
 
@@ -361,15 +363,9 @@ class TreeDaysPlanner:
                 fleet_phasing_out_1[_] = fleet_state_1[_]
                 fleet_state_0.pop(_, None)
                 fleet_state_1.pop(_, None)
-                # ipdb.set_trace()
-
-                # self.removed_aircrafts.append(_)
-
-        # if self.calendar_tree['C'].depth() == 677:
-        #     import ipdb
-        #     ipdb.set_trace()
 
         for _ in on_c_maintenance_0:
+            
             print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] < 0:
                 import ipdb
@@ -377,17 +373,13 @@ class TreeDaysPlanner:
             on_c_maintenance_tats_0[_] -= 1
             on_c_maintenance_tats_1[_] -= 1
             if on_c_maintenance_tats_0[_] == 0:
-                # import ipdb
-                # ipdb.set_trace()
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
                 on_c_maintenance_1.remove(_)
                 on_c_maintenance_tats_1.pop(_, None)
-                # if self.tat[_][last_code] == -1: easiest bug to solve in my life
 
         if c_maintenance_counter > 0:
             c_maintenance_counter -= 1
-            # c_maintenance_counter -= 0 stupidest bug ever...
 
         for action_value in maintenance_actions:
             # if type_check
@@ -404,8 +396,11 @@ class TreeDaysPlanner:
                     day, on_maintenance, on_c_maintenance_1, slots,
                     c_maintenance_counter, new_code, on_c_maintenance_tats_1)
                 if valid_c:
+                    is_D_check = self.is_d_check(on_maintenance, fleet_state_1)
                     fleet_state_1 = self.fleet_operate_one_day(
-                        fleet_state_1, day_old, on_c_maintenance_1, type_check)
+                        fleet_state_1, day_old, on_c_maintenance_1, type_check,
+                        is_D_check)
+                    fleet_state_1 = order_fleet_state(fleet_state_1)
                     fleet_phasing_out_1 = self.fleet_operate_one_day(
                         fleet_phasing_out_1, day_old, [], type_check)
                     fleet_phasing_out_1, phased_out_1 = self.phasing_out(
@@ -462,6 +457,20 @@ class TreeDaysPlanner:
                             fleet_phasing_out=fleet_phasing_out_0,
                             phased_out=phased_out_0))
         return childs
+
+    def is_d_check(self, on_maintenance, fleet_state):
+        d_cycle = fleet_state[on_maintenance]['D-CYCLE']
+        d_cycle_max = fleet_state[on_maintenance]['D-CYCLE-MAX']
+
+        total_ratio = fleet_state[on_maintenance]['TOTAL-RATIO']
+        d_ratio = fleet_state[on_maintenance]['DY-D-RATIO']
+
+        if (d_cycle == d_cycle_max) or (d_ratio == total_ratio):
+            import ipdb;
+            ipdb.set_trace()
+            return True
+
+        return False
 
     def phasing_out(self, fleet_phasing_out, phased_out, day):
         fleet_phasing_out_keys = list(fleet_phasing_out.keys())
@@ -544,7 +553,7 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    def solve_schedule(self, type_check='A'):
+    def solve_schedule(self, type_check='C'):
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
