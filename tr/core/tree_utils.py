@@ -159,8 +159,9 @@ def fleet_operate_C(**kwargs):
                 # code = fleet_state[aircraft]['{}-SN'.format(type_check)]
                 d_check_code = fleet_state[aircraft]['D-CYCLE']
                 d_check_limit = fleet_state[aircraft]['D-CYCLE-MAX']
-                fleet_state[aircraft]['D-CYCLE'] = generate_D_check_code(d_check_limit, d_check_code)
-                
+                fleet_state[aircraft]['D-CYCLE'] = generate_D_check_code(
+                    d_check_limit, d_check_code)
+
                 code = fleet_state[aircraft]['{}-SN'.format(type_check)]
                 fleet_state[aircraft]['{}-SN'.format(
                     type_check)] = code_generator[type_check](code)
@@ -193,12 +194,12 @@ def fleet_operate_C(**kwargs):
             type_check)] = fleet_state[aircraft]['FC-{}'.format(
                 type_check)] / fleet_state[aircraft]['FC-{}-MAX'.format(
                     type_check)]
-        fleet_state[aircraft]['DY-D-RATIO'] = fleet_state[aircraft]['DY-D'] / fleet_state[aircraft]['DY-D-MAX']
+        fleet_state[aircraft]['DY-D-RATIO'] = fleet_state[aircraft][
+            'DY-D'] / fleet_state[aircraft]['DY-D-MAX']
         fleet_state[aircraft]['TOTAL-RATIO'] = max([
             fleet_state[aircraft]['DY-{}-RATIO'.format(type_check)],
             fleet_state[aircraft]['FH-{}-RATIO'.format(type_check)],
-            fleet_state[aircraft]['FC-{}-RATIO'.format(type_check)],
-            fleet_state[aircraft]['DY-D-RATIO']
+            fleet_state[aircraft]['FC-{}-RATIO'.format(type_check)]
         ])
     return fleet_state
 
@@ -243,11 +244,16 @@ def build_fleet_state(fleet, type_check='A'):
                 type_check)] / fleet_state[key]['FC-{}-MAX'.format(type_check)]
 
         if type_check == 'C':
-            fleet_state[key]['D-CYCLE'] = fleet.aircraft_info[key]['D_INITIAL']['D-CYCLE']
-            fleet_state[key]['DY-D'] = fleet.aircraft_info[key]['D_INITIAL']['DY-D']
-            fleet_state[key]['DY-D-MAX'] = fleet.aircraft_info[key]['D_INITIAL']['D-CI-DY']
-            fleet_state[key]['D-CYCLE-MAX'] = fleet.aircraft_info[key]['D_INITIAL']['D-MAX']
-            fleet_state[key]['DY-D-RATIO'] = fleet_state[key]['DY-D'] / fleet_state[key]['DY-D-MAX']
+            fleet_state[key]['D-CYCLE'] = fleet.aircraft_info[key][
+                'D_INITIAL']['D-CYCLE']
+            fleet_state[key]['DY-D'] = fleet.aircraft_info[key]['D_INITIAL'][
+                'DY-D']
+            fleet_state[key]['DY-D-MAX'] = fleet.aircraft_info[key][
+                'D_INITIAL']['D-CI-DY']
+            fleet_state[key]['D-CYCLE-MAX'] = fleet.aircraft_info[key][
+                'D_INITIAL']['D-MAX']
+            fleet_state[key]['DY-D-RATIO'] = fleet_state[key][
+                'DY-D'] / fleet_state[key]['DY-D-MAX']
             fleet_state[key]['TOTAL-RATIO'] = max([
                 fleet_state[key]['DY-{}-RATIO'.format(type_check)],
                 fleet_state[key]['FH-{}-RATIO'.format(type_check)],
@@ -261,8 +267,6 @@ def build_fleet_state(fleet, type_check='A'):
                 fleet_state[key]['FH-{}-RATIO'.format(type_check)],
                 fleet_state[key]['FC-{}-RATIO'.format(type_check)]
             ])
-
-
 
         # fleet_state[key]['DY-{}-WASTE'.format(
         #     type_check)] = fleet_state[key]['DY-{}-MAX'.format(
@@ -283,11 +287,12 @@ def order_fleet_state(fleet_state):
                key=lambda x: x[1]['TOTAL-RATIO'],
                reverse=True))
 
+
 def generate_D_check_code(limit, last_code):
     code = (int(last_code) + 1) % (limit + 1)
     if code == 0:
         code = 1
-    return code 
+    return code
 
 
 def generate_code(limit, last_code):
