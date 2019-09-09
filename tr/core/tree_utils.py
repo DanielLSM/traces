@@ -139,6 +139,10 @@ def fleet_operate_C(**kwargs):
     code_generator = kwargs['code_generator']
     type_D_check = kwargs['type_D_check']
 
+    # if 'Aircraft-48' in on_maintenance:
+    #     import ipdb
+    #     ipdb.set_trace()
+
     for aircraft in fleet_state.keys():
         if aircraft in on_maintenance:
             # dont worry with this if, an aircraft will never be selected
