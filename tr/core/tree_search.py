@@ -239,10 +239,9 @@ class TreeDaysPlanner:
                 fleet_state_1.pop(_, None)
 
         for _ in on_c_maintenance_0:
+            # import ipdb
+            # ipdb.set_trace()
             # print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
-            if on_c_maintenance_tats_0[_] < 0:
-                import ipdb
-                ipdb.set_trace()
             on_c_maintenance_tats_0[_] -= 1
             on_c_maintenance_tats_1[_] -= 1
             if on_c_maintenance_tats_0[_] == 0:
@@ -357,7 +356,6 @@ class TreeDaysPlanner:
         childs = []
         day = advance_date(day, days=int(1))
         slots = self.get_slots(day, type_check)
-
         # if self.calendar_tree['C'].depth() == 668:
 
         #     import ipdb
@@ -373,20 +371,21 @@ class TreeDaysPlanner:
         #     import ipdb
         #     ipdb.set_trace()
         # slots += 2
+
         on_maintenance = list(fleet_state_1.keys())[0]
         ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
         if self.calendar_tree['C'].depth() <= 240:
-            maintenance_actions = [1, 0] if ratio > 0.79 else [0, 1]
+            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
         elif self.calendar_tree['C'].depth() <= 343:
             maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
         elif self.calendar_tree['C'].depth() <= 727:
             maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
         elif self.calendar_tree['C'].depth() <= 785:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+            maintenance_actions = [1, 0] if ratio > 0.75 else [0, 1]
         elif self.calendar_tree['C'].depth() <= 927:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
         elif self.calendar_tree['C'].depth() <= 960:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
         else:
             maintenance_actions = [1, 0] if ratio > 0.84 else [0, 1]
 
@@ -404,19 +403,26 @@ class TreeDaysPlanner:
                 # import ipdb
                 # ipdb.set_trace()
 
-        for _ in on_c_maintenance_0:
-
+        
+        # if len(on_c_maintenance_0) > 0 and self.calendar_tree['C'].depth() == 21:
+        #     import ipdb
+        #     ipdb.set_trace()
+        on_c_maintenance_all = deepcopy(on_c_maintenance_0)
+        for _ in on_c_maintenance_all:
             print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
-            if on_c_maintenance_tats_0[_] < 0:
-                import ipdb
-                ipdb.set_trace()
-            on_c_maintenance_tats_0[_] -= 1
-            on_c_maintenance_tats_1[_] -= 1
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
                 on_c_maintenance_1.remove(_)
                 on_c_maintenance_tats_1.pop(_, None)
+            else:
+                on_c_maintenance_tats_0[_] -= 1
+                on_c_maintenance_tats_1[_] -= 1
+
+        # if len(on_c_maintenance_0) > 0 and self.calendar_tree['C'].depth() == 21:
+        #     import ipdb
+        #     ipdb.set_trace()
+
 
         if c_maintenance_counter > 0:
             c_maintenance_counter -= 1
@@ -429,6 +435,16 @@ class TreeDaysPlanner:
                             'allowed']['c_peak']:
 
                 on_maintenance = list(fleet_state_1.keys())[0]
+                le_d_check = False
+                for key in fleet_state_1.keys():
+                    d_ratio = fleet_state_1[key]['DY-D-RATIO']
+                    if d_ratio >= 1:
+                        # import ipdb
+                        # ipdb.set_trace()
+                        print("OHOH")
+                        on_maintenance = key
+                        le_d_check = True
+
                 new_code = self.code_generator['C'](
                     fleet_state_1[on_maintenance]['C-SN'])
 
@@ -440,7 +456,8 @@ class TreeDaysPlanner:
                 #     ipdb.set_trace()
 
                 if valid_c:
-                    is_D_check = self.is_d_check(on_maintenance, fleet_state_1)
+                    is_D_check = (self.is_d_check(on_maintenance,
+                                                  fleet_state_1) or le_d_check)
                     fleet_state_1 = self.fleet_operate_one_day(
                         fleet_state_1, day_old, on_c_maintenance_1, type_check,
                         is_D_check)
@@ -509,7 +526,11 @@ class TreeDaysPlanner:
         total_ratio = fleet_state[on_maintenance]['TOTAL-RATIO']
         d_ratio = fleet_state[on_maintenance]['DY-D-RATIO']
 
-        if (d_cycle == d_cycle_max) or (d_ratio >= 0.9):
+        if on_maintenance == 'Aircraft-13':
+            import ipdb
+            ipdb.set_trace()
+
+        if (d_cycle == d_cycle_max) or (d_ratio >= 0.95):
             # import ipdb
             # ipdb.set_trace()
             return True
@@ -524,9 +545,13 @@ class TreeDaysPlanner:
     def phasing_out(self, fleet_phasing_out, phased_out, day):
         fleet_phasing_out_keys = list(fleet_phasing_out.keys())
         for key in fleet_phasing_out_keys:
-            if fleet_phasing_out[key]['TOTAL-RATIO'] >= 1:
-                import ipdb
-                ipdb.set_trace()
+            dy_d = fleet_phasing_out[key]['DY-D']
+            dy_d_max = fleet_phasing_out[key]['DY-D-MAX']
+            total_ratio = fleet_phasing_out[key]['TOTAL-RATIO']
+            if total_ratio >= 1 or dy_d >= dy_d_max:
+                if key == 'Aircraft-13':
+                    import ipdb
+                    ipdb.set_trace()
 
                 fleet_phasing_out.pop(key, None)
                 phased_out[key] = day
@@ -603,7 +628,7 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    def solve_schedule(self, type_check='A'):
+    def solve_schedule(self, type_check='C'):
         root_id = self.calendar_tree[type_check].root
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)

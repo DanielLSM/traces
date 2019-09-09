@@ -166,12 +166,12 @@ def fleet_operate_C(**kwargs):
                 fleet_state[aircraft]['{}-SN'.format(
                     type_check)] = code_generator[type_check](code)
                 fleet_state[aircraft]['OPERATING'] = False
-            if type_D_check:
-                fleet_state[aircraft]['DY-D'.format(type_check)] = 0
-                fleet_state[aircraft]['D-CYCLE'] = 1
             fleet_state[aircraft]['DY-{}'.format(type_check)] = 0
             fleet_state[aircraft]['FH-{}'.format(type_check)] = 0
             fleet_state[aircraft]['FC-{}'.format(type_check)] = 0
+            if type_D_check:
+                fleet_state[aircraft]['DY-D'.format(type_check)] = 0
+                fleet_state[aircraft]['D-CYCLE'] = 1
         else:
             fleet_state[aircraft]['DY-{}'.format(type_check)] += 1
             fleet_state[aircraft]['DY-D'.format(type_check)] += 1
