@@ -17,6 +17,7 @@ from tr.core.csp import Variable, Assignment, Schedule
 from tr.core.backtrack import solve_csp_schedule, check_feasibility, csp_lowest_cardinalities
 from tr.core.backtrack import csp_lowest_cardinalities, all_unique_domains
 from tr.core.tree_search import TreeDaysPlanner
+from tr.core.tasks_planner import TasksPlanner
 
 checks = {
     'A_INITIAL': {
@@ -45,13 +46,17 @@ class SchedulerEDF(FleetManagerBase):
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         self.calendar.calendar[daterinos]['resources']['slots']['a-type'] += 1
 
-        self.plan_by_days()
+        # self.plan_by_days()
 
         # self.plan_maintenance_opportunities()
         # save_pickle(self.global_schedule, "checks.pkl")
         # self.global_schedule = load_pickle('checks.pkl')
+
         # self.pre_process_tasks()
-        # self.plan_tasks_fleet()
+        # save_pickle(self.aircraft_tasks, 'aircraft_tasks_processed.pkl')
+        self.aircraft_tasks = load_pickle('aircraft_tasks_processed.pkl')
+        self.plan_tasks_fleet()
+
         # self.save_checks_to_xlsx()
         # self.save_tasks_to_xlsx()
 
@@ -667,13 +672,20 @@ class SchedulerEDF(FleetManagerBase):
             self.aircraft_tasks[aircraft]['a_checks_items'].remove(blacked)
 
     def plan_tasks_fleet(self):
-        global_schedule_tasks = OrderedDict()
-        print("INFO: Task planning for the fleet")
-        for aircraft in tqdm(self.global_schedule.keys()):
-            schedule_tasks = self.plan_tasks(aircraft)
-            global_schedule_tasks[aircraft] = schedule_tasks
-        self.global_schedule_tasks = global_schedule_tasks
-        print("INFO: Task Planning finished")
+
+        self.optimizer_tasks = TasksPlanner(self.aircraft_tasks, self.df_tasks,
+                                            self.skills, self.skills_ratios_A,
+                                            self.skills_ratios_C,
+                                            self.man_hours)
+        all_schedules = self.optimizer_tasks.solve_tasks()
+
+        # global_schedule_tasks = OrderedDict()
+        # print("INFO: Task planning for the fleet")
+        # for aircraft in tqdm(self.global_schedule.keys()):
+        #     schedule_tasks = self.plan_tasks(aircraft)
+        #     global_schedule_tasks[aircraft] = schedule_tasks
+        # self.global_schedule_tasks = global_schedule_tasks
+        # print("INFO: Task Planning finished")
 
     def plan_tasks(self, aircraft):
         # A-checks only have flight hours for now
@@ -751,11 +763,9 @@ if __name__ == '__main__':
     t = time.time()
     try:
         book_checks = excel_to_book(f1_in_checks)
+        book_tasks, book_output = 0, 0
         # book_tasks = excel_to_book(f1_in_tasks)
-        book_tasks = 0
         # book_output = excel_to_book(f2_out)
-        book_output = 0
-
     except Exception as e:
         raise e
 

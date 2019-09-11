@@ -33,7 +33,7 @@ class TreeDaysPlanner:
         import ipdb
         ipdb.set_trace()
         try:
-            self.phased_out = load_pickle("phased_out")
+            self.phased_out = load_pickle("phased_out.pkl")
             self.final_calendar = load_pickle("C_checks.pkl")
         except:
             self.phased_out = OrderedDict()
@@ -610,11 +610,14 @@ class TreeDaysPlanner:
         final_schedule = self.calendar_to_schedule(result, type_check)
         self.final_schedule_to_excel(final_schedule, type_check)
         self.final_calendar[type_check] = result.calendar
+        # self.final_schedule[type_check] = final_schedule
         save_pickle(self.final_calendar, "{}_checks.pkl".format(type_check))
         if type_check == 'C':
             self.phased_out = result.phased_out
         import ipdb
-        save_pickle(self.phased_out, "phased_out")
+        save_pickle(result.calendar, "calendar_{}.pkl".format(type_check))
+        save_pickle(final_schedule, "final_schedule_{}.pkl".format(type_check))
+        save_pickle(self.phased_out, "phased_out.pkl")
         ipdb.set_trace()
         # result = self.solve(root, type_check='A')
         # score = self.calendar_score(result, type_check=type_check)

@@ -7,6 +7,8 @@ from collections import OrderedDict, defaultdict
 from tr.core.parsers import book_to_kwargs_MPO
 from tr.core.utils import advance_date, dates_between
 
+from tr.core.utils import save_pickle, load_pickle
+
 #TODO: you can read the readme.md, but the basic idea is,
 # for a_checks, we put 1 everywehre, then we put 2 on more_a_slots
 # the a_not_allowed already restricts fridays and weekends
@@ -315,8 +317,28 @@ class FleetManagerBase:
         self.fleet = Fleet(start_date=self.start_date,
                            end_date=self.end_date,
                            **kwargs['aircraft_info'])
-        # self.aircraft_tasks = kwargs['aircraft_tasks']
-        # self.df_tasks = kwargs['df_tasks']
+
+        try:
+            self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
+            self.df_tasks = load_pickle('df_tasks.pkl')
+            self.skills = load_pickle('skills.pkl')
+            self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')
+            self.skills_ratios_C = load_pickle('skills_ratios_C.pkl')
+            self.man_hours = load_pickle('man_hours.pkl')
+        except:
+            self.aircraft_tasks = kwargs['aircraft_tasks']
+            self.df_tasks = kwargs['df_tasks']
+            self.skills = kwargs['skills']
+            self.skills_ratios_A = kwargs['skills_ratios_A']
+            self.skills_ratios_C = kwargs['skills_ratios_C']
+            self.man_hours = kwargs['man_hours']
+            save_pickle(self.aircraft_tasks, 'aircraft_tasks.pkl')
+            save_pickle(self.df_tasks, 'df_tasks.pkl')
+            save_pickle(self.skills, 'skills.pkl')
+            save_pickle(self.skills_ratios_A, 'skills_ratios_A.pkl')
+            save_pickle(self.skills_ratios_C, 'skills_ratios_C.pkl')
+            save_pickle(self.man_hours, 'man_hours.pkl')
+
         # self.kwargs_c_checks = kwargs['c-checks']
         # self.kwargs_c_checks_days = kwargs['c-checks-days']
 

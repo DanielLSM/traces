@@ -148,6 +148,56 @@ def book_to_kwargs_tasks(book):
     for _ in df['A/C'].unique():
         aircraft_tasks[_] = OrderedDict()
 
+    skills = []
+    for _ in book['SKILL_TYPE']['SKILL TYPE']:
+        skills.append(_)
+
+    skills_ratios_A = OrderedDict()
+    for _ in book['A-CHECK_NRS_RATIO']['SKILL GI']:
+        skills_ratios_A[_] = {}
+
+    skills_ratios_C = OrderedDict()
+    for _ in book['C-CHECK_NRS_RATIO']['SKILL GI']:
+        skills_ratios_C[_] = {}
+
+    for _ in book['A-CHECK_NRS_RATIO']['SKILL GI'].keys():
+        skill = book['A-CHECK_NRS_RATIO']['SKILL GI'][_]
+        skill_block = book['A-CHECK_NRS_RATIO']['BLOCK'][_]
+        skill_modifier = book['A-CHECK_NRS_RATIO']['SKILL MDO'][_]
+        skill_ratio = book['A-CHECK_NRS_RATIO']['RATIO'][_]
+
+        if skill_block not in skills_ratios_A[skill].keys():
+            skills_ratios_A[skill][skill_block] = {}
+        skills_ratios_A[skill][skill_block][skill_modifier] = skill_ratio
+
+    for _ in book['C-CHECK_NRS_RATIO']['SKILL GI'].keys():
+        skill = book['C-CHECK_NRS_RATIO']['SKILL GI'][_]
+        skill_block = book['C-CHECK_NRS_RATIO']['BLOCK'][_]
+        skill_modifier = book['C-CHECK_NRS_RATIO']['SKILL MDO'][_]
+        skill_ratio = book['C-CHECK_NRS_RATIO']['RATIO'][_]
+
+        if skill_block not in skills_ratios_C[skill].keys():
+            skills_ratios_C[skill][skill_block] = {}
+        skills_ratios_C[skill][skill_block][skill_modifier] = skill_ratio
+
+    man_hours = OrderedDict()
+    for _ in book['NUMBER_OF_TECHNICIANS']['Date'].keys():
+        date = book['NUMBER_OF_TECHNICIANS']['Date'][_]
+        man_hours[date] = {}
+        for key in book['NUMBER_OF_TECHNICIANS'].keys():
+            if key != 'Weekday' and key != 'Week Number' and key != 'Date':
+                man_hours[date][
+                    key] = book['NUMBER_OF_TECHNICIANS'][key][_] * 8
+
+    man_hours_skills = OrderedDict()
+    for _ in range(2, 6):
+        for date in man_hours.keys():
+            new_date = advance_date(date, years=_)
+            man_hours_skills[new_date] = man_hours[date]
+
+    # import ipdb
+    # ipdb.set_trace()
+
     for line_idx in tqdm(range(len(df['A/C']))):
         aircraft = df['A/C'][line_idx]
         item = df['ITEM'][line_idx]
@@ -170,7 +220,14 @@ def book_to_kwargs_tasks(book):
     print("INFO: information from runtime parsed with success")
     print("#########################")
 
-    return {'aircraft_tasks': aircraft_tasks, 'df_tasks': df}
+    return {
+        'aircraft_tasks': aircraft_tasks,
+        'df_tasks': df,
+        'skills': skills,
+        'skills_ratios_A': skills_ratios_A,
+        'skills_ratios_C': skills_ratios_C,
+        'man_hours': man_hours_skills
+    }
 
 
 def book_to_kwargs_output(book_output):
@@ -199,8 +256,9 @@ def book_to_kwargs_output(book_output):
 
 def book_to_kwargs(book_checks, book_tasks=0, book_output=0):
     kwargs = book_to_kwargs_MPO(book_checks)
-    # kwargs_tasks = book_to_kwargs_tasks(book_tasks)
-    # kwargs.update(kwargs_tasks)
+    if book_tasks != 0:
+        kwargs_tasks = book_to_kwargs_tasks(book_tasks)
+        kwargs.update(kwargs_tasks)
     # kwargs_output = book_to_kwargs_output(book_output)
     # kwargs.update(kwargs_output)
     return kwargs
