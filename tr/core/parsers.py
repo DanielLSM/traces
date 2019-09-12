@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import random
 import datetime
 from tqdm import tqdm
@@ -20,6 +21,41 @@ def excel_to_book(file_input: str):
         print('Error parsing the excel file into a dict book buddy!')
     print("INFO: xlsx to runtime book completed")
     return book
+
+
+# Function 4: Given a string checks if it is a Month/Year or day.
+# Returns time in months if it was a 'Y' or 'M', otherwise 0 is returned.
+def preprocessMonths(x):
+    # that, if x is a string,
+    if type(x) is str:
+        if x[-1] == 'M':
+            return float(x[0:len(x) - 2])
+        elif x[-1] == 'Y':
+            return float(x[0:len(x) - 2]) * 12
+        else:
+            return 0
+    else:
+        return
+
+
+# Function 5: Given a string checks if it is a day
+# Return amount of days if it was a 'D', otherwise 0 is returned
+def preprocessDays(x):
+    # that, if x is a string,
+    if type(x) is str:
+        if x[-1] == 'D':
+            return float(x[0:len(x) - 2])
+        else:
+            return 0
+    else:
+        return
+
+
+# Function that changes everything unequal to 0 to 1 necessary for tasks by block columns
+def preprocesstask(x):
+    # that, if x is a string,
+    if type(x) is str:
+        return 1
 
 
 def book_to_kwargs_MPO(book):
@@ -119,6 +155,7 @@ def book_to_kwargs_tasks(book):
     sheet_name = 'TASK_LIST'
     df = book[sheet_name]
 
+    # equivalent to Preprocess.py/PreprocessTasks
     def process_df(df):
         for _ in df.keys():
             df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
@@ -131,10 +168,11 @@ def book_to_kwargs_tasks(book):
         df['LAST EXEC FH'].fillna(False, inplace=True)
         df['LAST EXEC DT'].fillna(False, inplace=True)
         df['PER CALEND'].fillna(False, inplace=True)
-        df['TASK BY BLOCK'].fillna("OTHER", inplace=True)
+        df['TASK BY BLOCK'].fillna("C-CHECK", inplace=True)
         # do not use things without due dates
-        df = df[(df['PER FH'] != False) | (df['PER FC'] != False) |
-                (df['PER CALEND'] != False)]
+        # df = df[(df['PER FH'] != False) | (df['PER FC'] != False) |
+        #         (df['PER CALEND'] != False)]
+        df = df[df['TASK BY BLOCK'] != 'LINE MAINTENANCE']
         df = df.reset_index(drop=True)
         return df
 
@@ -180,42 +218,129 @@ def book_to_kwargs_tasks(book):
             skills_ratios_C[skill][skill_block] = {}
         skills_ratios_C[skill][skill_block][skill_modifier] = skill_ratio
 
-    man_hours = OrderedDict()
-    for _ in book['NUMBER_OF_TECHNICIANS']['Date'].keys():
-        date = book['NUMBER_OF_TECHNICIANS']['Date'][_]
-        man_hours[date] = {}
-        for key in book['NUMBER_OF_TECHNICIANS'].keys():
-            if key != 'Weekday' and key != 'Week Number' and key != 'Date':
-                man_hours[date][
-                    key] = book['NUMBER_OF_TECHNICIANS'][key][_] * 8
+    def get_man_hours(book):
+        df_personnel = book['NUMBER_OF_TECHNICIANS']
+        weekdays = df_personnel['Weekday'].unique()
+        man_personnel = OrderedDict()
+        #0=Monday, 1=Tuesday, this is nice for.. .weekday()
+        ctx = 0
+        for weekday in weekdays:
+            man_personnel[ctx] = OrderedDict()
+            for m_key in df_personnel.keys():
+                if m_key != 'Weekday' and m_key != 'Week Number' and m_key != 'Date':
+                    man_personnel[ctx][m_key] = np.mean(df_personnel[m_key][
+                        df_personnel['Weekday'] == weekday])
+            ctx += 1
 
+        return man_personnel
+
+    # for _ in book['NUMBER_OF_TECHNICIANS']['Date'].keys():
+    #     date = book['NUMBER_OF_TECHNICIANS']['Date'][_]
+    #     man_hours[date] = {}
+    #     for key in book['NUMBER_OF_TECHNICIANS'].keys():
+    #         if key != 'Weekday' and key != 'Week Number' and key != 'Date':
+    #             man_hours[date][
+    #                 key] = book['NUMBER_OF_TECHNICIANS'][key][_] * 8
+
+    # for _ in range(2, 6):
+    #     for date in man_hours.keys():
+    #         new_date = advance_date(date, years=_)
+    #         man_hours_skills[new_date] = man_hours[date]
+    man_personnel = get_man_hours(book)
     man_hours_skills = OrderedDict()
-    for _ in range(2, 6):
-        for date in man_hours.keys():
-            new_date = advance_date(date, years=_)
-            man_hours_skills[new_date] = man_hours[date]
 
-    # import ipdb
-    # ipdb.set_trace()
+    def shred_tasks(df_aircraft):
+        ##### Preprocess data
+        #### Excel file 1 maintenance tasks
 
-    for line_idx in tqdm(range(len(df['A/C']))):
-        aircraft = df['A/C'][line_idx]
-        item = df['ITEM'][line_idx]
-        if item not in aircraft_tasks[aircraft].keys():
-            aircraft_tasks[aircraft][item] = OrderedDict()
-            aircraft_tasks[aircraft][item]['assignments'] = []
-        aircraft_tasks[aircraft][item][line_idx] = OrderedDict()
-        for column_idx in df.keys():
-            if column_idx != 'A/C' and column_idx != 'ITEM':
-                value = df[column_idx][line_idx]
-                aircraft_tasks[aircraft][item][line_idx][column_idx] = value
+        ###1. Modification/expanding dataset section
 
-    # add a_check_items for now
+        ##Modification/expanding 1: nan values to zero
+        #Replace nan values with zero in the PER FH and PER FC columns
+        df_aircraft["PER FH"] = df_aircraft["PER FH"].fillna(0)
+        df_aircraft["PER FC"] = df_aircraft["PER FC"].fillna(0)
+        df_aircraft["PER CALEND"] = df_aircraft["PER CALEND"].fillna(0)
+        # df_aircraft["TASK BY BLOCK"] = df_aircraft["TASK BY BLOCK"].apply(
+        #     preprocesstask).fillna(0)
+
+        ##Modification/expanding 2: new columns added for month and day
+        #The CAL column needs a special treatment. The years are transformed to months.
+        #Two new columns will be created: PER Month (only months and years (expressed in months))
+        #and PER DAY (only in days!)
+        df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(
+            preprocessMonths).fillna(0)
+        df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(
+            preprocessDays).fillna(0)
+
+        ##Modification/expanding 3: new column with nr task added to dataset
+        #Each of the tasks will be represented by a task nr starting from 0.
+        #This can be found in the column 'NR TASK'
+        df_aircraft['NR TASK'] = range(len(df_aircraft))
+
+        ##Modification/expanding 4: Remove list that have no given limit in FH/FC/CALEND
+        #The tasks that have no PER FH, PER FC, PER CALEND will be removed from the tasks list.
+        tasks_no_date = np.where(
+            (df_aircraft['PER FH'] + df_aircraft['PER FC'] +
+             df_aircraft['PER MONTH'] + df_aircraft['PER DAY']) == 0)
+        amount_remove = np.count_nonzero(tasks_no_date)
+        index_labels = []
+        for i in range(len(tasks_no_date[0])):
+            index_labels.append(tasks_no_date[0][i])
+
+        #Now dropping the rows without due dates
+        df_aircraft = df_aircraft.drop(df_aircraft.index[index_labels])
+        return df_aircraft, tasks_no_date, index_labels, amount_remove
+
     for aircraft in aircraft_tasks.keys():
-        a_checks_idxs = df[(df['TASK BY BLOCK'] == 'A-CHECK')
-                           & (df['A/C'] == aircraft)].index.values.astype(int)
-        a_checks_items = df['ITEM'][a_checks_idxs].unique()
-        aircraft_tasks[aircraft]['a_checks_items'] = a_checks_items.tolist()
+        df_aircraft = df.copy(deep=True)
+        df_aircraft = df_aircraft[df_aircraft['A/C'] == aircraft]
+        df_aircraft = df_aircraft.reset_index(drop=True)
+        df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(
+            df_aircraft)
+
+        for line_idx in list(df_aircraft.index):
+            item = df_aircraft['ITEM'][line_idx]
+            if item not in aircraft_tasks[aircraft].keys():
+                aircraft_tasks[aircraft][item] = OrderedDict()
+            aircraft_tasks[aircraft][item][line_idx] = OrderedDict()
+            for column_idx in df_aircraft.keys():
+                if column_idx != 'A/C' and column_idx != 'ITEM':
+                    value = df_aircraft[column_idx][line_idx]
+                    aircraft_tasks[aircraft][item][line_idx][
+                        column_idx] = value
+
+            # task by block 1: A-check, 0 C-check
+            if aircraft_tasks[aircraft][item][line_idx][
+                    'TASK BY BLOCK'] == "A-CHECK":
+                main_skill = aircraft_tasks[aircraft][item][line_idx]['SKILL']
+                block = aircraft_tasks[aircraft][item][line_idx]['BLOCK']
+                man_hours_time = aircraft_tasks[aircraft][item][line_idx][
+                    'Mxh EST.']
+                import ipdb
+                ipdb.set_trace()
+
+            else:
+                pass
+
+    # for line_idx in tqdm(range(len(df['A/C']))):
+
+    #     aircraft = df['A/C'][line_idx]
+    #     item = df['ITEM'][line_idx]
+    #     if item not in aircraft_tasks[aircraft].keys():
+    #         aircraft_tasks[aircraft][item] = OrderedDict()
+    #         aircraft_tasks[aircraft][item]['assignments'] = []
+    #     aircraft_tasks[aircraft][item][line_idx] = OrderedDict()
+    #     for column_idx in df.keys():
+    #         if column_idx != 'A/C' and column_idx != 'ITEM':
+    #             value = df[column_idx][line_idx]
+    #             aircraft_tasks[aircraft][item][line_idx][column_idx] = value
+
+    # # add a_check_items for now
+    # for aircraft in aircraft_tasks.keys():
+    #     a_checks_idxs = df[(df['TASK BY BLOCK'] == 'A-CHECK')
+    #                        & (df['A/C'] == aircraft)].index.values.astype(int)
+    #     a_checks_items = df['ITEM'][a_checks_idxs].unique()
+    #     aircraft_tasks[aircraft]['a_checks_items'] = a_checks_items.tolist()
 
     print("INFO: information from runtime parsed with success")
     print("#########################")

@@ -318,14 +318,9 @@ class FleetManagerBase:
                            end_date=self.end_date,
                            **kwargs['aircraft_info'])
 
-        try:
-            self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
-            self.df_tasks = load_pickle('df_tasks.pkl')
-            self.skills = load_pickle('skills.pkl')
-            self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')
-            self.skills_ratios_C = load_pickle('skills_ratios_C.pkl')
-            self.man_hours = load_pickle('man_hours.pkl')
-        except:
+        # import ipdb
+        # ipdb.set_trace()
+        if 'aircraft_tasks' in kwargs.keys():
             self.aircraft_tasks = kwargs['aircraft_tasks']
             self.df_tasks = kwargs['df_tasks']
             self.skills = kwargs['skills']
@@ -338,7 +333,13 @@ class FleetManagerBase:
             save_pickle(self.skills_ratios_A, 'skills_ratios_A.pkl')
             save_pickle(self.skills_ratios_C, 'skills_ratios_C.pkl')
             save_pickle(self.man_hours, 'man_hours.pkl')
-
+        else:
+            self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
+            self.df_tasks = load_pickle('df_tasks.pkl')
+            self.skills = load_pickle('skills.pkl')
+            self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')
+            self.skills_ratios_C = load_pickle('skills_ratios_C.pkl')
+            self.man_hours = load_pickle('man_hours.pkl')
         # self.kwargs_c_checks = kwargs['c-checks']
         # self.kwargs_c_checks_days = kwargs['c-checks-days']
 
