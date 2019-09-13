@@ -316,10 +316,26 @@ def book_to_kwargs_tasks(book):
                 block = aircraft_tasks[aircraft][item][line_idx]['BLOCK']
                 man_hours_time = aircraft_tasks[aircraft][item][line_idx][
                     'Mxh EST.']
+                aircraft_tasks[aircraft][item][line_idx]['SKILL'] = {}
+                aircraft_tasks[aircraft][item][line_idx]['SKILL'][
+                    main_skill] = man_hours_time
+
+                if main_skill in skills_ratios_A.keys():
+                    for extra_skill in skills_ratios_A[main_skill][block].keys(
+                    ):
+                        if main_skill != extra_skill:
+                            aircraft_tasks[aircraft][item][line_idx]['SKILL'][
+                                extra_skill] = 0
+                    for extra_skill in skills_ratios_A.keys():
+                        aircraft_tasks[aircraft][item][line_idx]['SKILL'][
+                            extra_skill] = man_hours_time * skills_ratios_A[
+                                extra_skill][block]
+
                 import ipdb
                 ipdb.set_trace()
 
-            else:
+            elif aircraft_tasks[aircraft][item][line_idx][
+                    'TASK BY BLOCK'] == "C-CHECK":
                 pass
 
     # for line_idx in tqdm(range(len(df['A/C']))):
