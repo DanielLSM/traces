@@ -217,7 +217,7 @@ def book_to_kwargs_tasks(book):
             skills_ratios_C[skill][skill_block] = {}
         skills_ratios_C[skill][skill_block][skill_modifier] = skill_ratio
 
-    def get_man_hours(book):
+    def get_man_personnel(book):
         df_personnel = book['NUMBER_OF_TECHNICIANS']
         weekdays = df_personnel['Weekday'].unique()
         man_personnel = OrderedDict()
@@ -233,6 +233,19 @@ def book_to_kwargs_tasks(book):
 
         return man_personnel
 
+    def get_man_hours(man_personnel):
+
+        effective_hours = 4
+        h_ndt = 7  #'HM-NDT'
+        l_ndt = 7
+        for week_day in man_personnel.keys():
+            man_personnel[week_day]['HM-NDT'] = h_ndt
+            man_personnel[week_day]['LM-NDT'] = l_ndt
+            for skill_day in man_personnel[week_day].keys():
+                man_personnel[week_day][skill_day] *= 4
+
+        return man_personnel
+
     # for _ in book['NUMBER_OF_TECHNICIANS']['Date'].keys():
     #     date = book['NUMBER_OF_TECHNICIANS']['Date'][_]
     #     man_hours[date] = {}
@@ -245,7 +258,8 @@ def book_to_kwargs_tasks(book):
     #     for date in man_hours.keys():
     #         new_date = advance_date(date, years=_)
     #         man_hours_skills[new_date] = man_hours[date]
-    man_personnel = get_man_hours(book)
+    man_personnel = get_man_personnel(book)
+    man_personnel_hours = get_man_hours(man_personnel)
     man_hours_skills = OrderedDict()
 
     def shred_tasks(df_aircraft):
@@ -305,10 +319,26 @@ def book_to_kwargs_tasks(book):
                     aircraft_tasks[aircraft][item][line_idx][column_idx] = value
 
             ##############################################
-            # setting skills
+            # setting skills as A or C check
             ##############################################
             # task by block 1: A-check, 0 C-check
-            if aircraft_tasks[aircraft][item][line_idx]['TASK BY BLOCK'] == "A-CHECK":
+            per_fc = aircraft_tasks[aircraft][item][line_idx]['PER FC']
+            per_fh = aircraft_tasks[aircraft][item][line_idx]['PER FH']
+            per_months = aircraft_tasks[aircraft][item][line_idx]['PER MONTH']
+            per_block = aircraft_tasks[aircraft][item][line_idx]['TASK BY BLOCK']
+
+            per_fc_boolean = per_fc if not per_fc else (per_fc < 5000)
+            per_fh_boolean = per_fh if not per_fh else (per_fh < 7500)
+            per_months_boolean = per_months if not per_months else (per_months < 24)
+
+            #condition for A-CHECK
+            a_check_boolean = ((per_block == "A-CHECK") or (per_fc_boolean) or (per_fh_boolean)
+                               or (per_months_boolean))
+
+            #condition for C-CHECK
+            c_check_boolean = (per_block == "C-CHECK")
+
+            if a_check_boolean:
                 main_skill = aircraft_tasks[aircraft][item][line_idx]['SKILL']
                 block = aircraft_tasks[aircraft][item][line_idx]['BLOCK']
                 man_hours_time = aircraft_tasks[aircraft][item][line_idx]['Mxh EST.']
@@ -325,7 +355,7 @@ def book_to_kwargs_tasks(book):
                             extra_skill] += man_hours_time * skills_ratios_A[main_skill][block][
                                 extra_skill]
 
-            elif aircraft_tasks[aircraft][item][line_idx]['TASK BY BLOCK'] == "C-CHECK":
+            elif c_check_boolean:
                 main_skill = aircraft_tasks[aircraft][item][line_idx]['SKILL']
                 block = aircraft_tasks[aircraft][item][line_idx]['BLOCK']
                 man_hours_time = aircraft_tasks[aircraft][item][line_idx]['Mxh EST.']
