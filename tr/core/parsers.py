@@ -383,13 +383,13 @@ def book_to_kwargs_tasks(book):
 
     # import ipdb
     # ipdb.set_trace()
-    test_task_parity(aircraft_clustered_tasks)
+    # test_task_parity(aircraft_clustered_tasks)
 
   print("INFO: information from runtime parsed with success")
   print("#########################")
 
   return {
-      'aircraft_tasks': aircraft_tasks,
+      'aircraft_tasks': aircraft_clustered_tasks,
       'df_tasks': df,
       'skills': skills,
       'skills_ratios_A': skills_ratios_A,
@@ -418,6 +418,8 @@ def test_task_parity(aircraft_clustered_tasks):
       'MAP': 11,
       'NDT': 12
   }
+  import ipdb
+  ipdb.set_trace()
   for _ in aircraft_clustered_tasks[aircraft].keys():
     for skill in aircraft_clustered_tasks[aircraft][_]['SKILL'].keys():
       try:

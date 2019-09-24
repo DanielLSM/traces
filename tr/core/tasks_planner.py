@@ -7,50 +7,50 @@ from tr.core.utils import advance_date, save_pickle, load_pickle
 
 
 class TasksPlanner:
-    def __init__(self, aircraft_tasks, df_tasks, skills, skills_ratios_A,
-                 skills_ratios_C, man_hours):
-        self.aircraft_tasks = aircraft_tasks
-        self.df_tasks = df_tasks
-        self.skills = skills
-        self.skills_ratios_A = skills_ratios_A
-        self.skills_ratios_C = skills_ratios_C
-        self.man_hours = man_hours
+  def __init__(self, aircraft_tasks, df_tasks, skills, skills_ratios_A, skills_ratios_C, man_hours):
+    self.aircraft_tasks = aircraft_tasks
+    self.df_tasks = df_tasks
+    self.skills = skills
+    self.skills_ratios_A = skills_ratios_A
+    self.skills_ratios_C = skills_ratios_C
+    self.man_hours = man_hours
 
-        try:
-            self.final_calendar = {}
-            self.final_fleet_schedule = {}
-            self.final_calendar['A'] = load_pickle("calendar_A.pkl")
-            self.final_calendar['C'] = load_pickle("calendar_C.pkl")
+    import ipdb
+    ipdb.set_trace()
 
-            # TODO you need to include the merged A to C checks, its kinda  important to know
-            # which ones are merged lol
-            self.final_fleet_schedule['A'] = load_pickle(
-                "final_schedule_A.pkl")
-            self.final_fleet_schedule['C'] = load_pickle(
-                "final_schedule_C.pkl")
-        except:
-            import ipdb
-            ipdb.set_trace()
+    try:
+      self.final_calendar = {}
+      self.final_fleet_schedule = {}
+      self.final_calendar['A'] = load_pickle("calendar_A.pkl")
+      self.final_calendar['C'] = load_pickle("calendar_C.pkl")
 
-        import ipdb
-        ipdb.set_trace()
+      # TODO you need to include the merged A to C checks, its kinda  important to know
+      # which ones are merged lol
+      self.final_fleet_schedule['A'] = load_pickle("final_schedule_A.pkl")
+      self.final_fleet_schedule['C'] = load_pickle("final_schedule_C.pkl")
+    except:
+      import ipdb
+      ipdb.set_trace()
 
-    def solve_tasks(self):
-        pass
+    import ipdb
+    ipdb.set_trace()
+
+  def solve_tasks(self):
+    pass
 
 
 class TaskBin:
-    def __init__(self, dates, skills, fill_ratio):
-        self.dates = dates
+  def __init__(self, dates, skills, fill_ratio):
+    self.dates = dates
 
-        pass
+    pass
 
-    # merges 2 bins and outputs a bin
-    @staticmethod
-    def merge_bins():
-        pass
+  # merges 2 bins and outputs a bin
+  @staticmethod
+  def merge_bins():
+    pass
 
-    # mostly for c_checks
-    @staticmethod
-    def order_bins():
-        pass
+  # mostly for c_checks
+  @staticmethod
+  def order_bins():
+    pass
