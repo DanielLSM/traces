@@ -65,20 +65,12 @@ class Calendar:
                                           info='public holidays')
 
         print("INFO: adding a-type calendar restrictions")
-        calendar = self.restrict_calendar(calendar,
-                                          self.a_type['time'],
-                                          info='a-type')
+        calendar = self.restrict_calendar(calendar, self.a_type['time'], info='a-type')
 
         print("INFO: adding c-type calendar restrictions")
-        calendar = self.restrict_calendar(calendar,
-                                          self.c_type['time'],
-                                          info='c-type')
-        calendar = self.restrict_calendar(calendar,
-                                          self.c_type['c_allowed'],
-                                          info='c_allowed')
-        calendar = self.restrict_calendar(calendar,
-                                          self.c_type['c_peak'],
-                                          info='c_peak')
+        calendar = self.restrict_calendar(calendar, self.c_type['time'], info='c-type')
+        calendar = self.restrict_calendar(calendar, self.c_type['c_allowed'], info='c_allowed')
+        calendar = self.restrict_calendar(calendar, self.c_type['c_peak'], info='c_peak')
 
         print("INFO: adding a-type resources (slots)")
         calendar = self.add_resources(calendar,
@@ -122,8 +114,7 @@ class Calendar:
         end_date = list(calendar.keys())[-1]
         for _ in restrict_dict[typek].keys():
             if _ > start_date and _ < end_date:
-                calendar[_]['resources'][typek][info] = restrict_dict['slots'][
-                    _]
+                calendar[_]['resources'][typek][info] = restrict_dict['slots'][_]
                 calendar[_]['allowed'][info] = True
         return calendar
 
@@ -174,15 +165,12 @@ class Fleet:
         time0 = time.time()
         for aircraft in self.aircraft_info.keys():
             due_dates[aircraft] = {
-                'a-type':
-                self.compute_due_dates_type_a(start_date, end_date, aircraft),
-                'c-type':
-                self.compute_due_dates_type_c(start_date, end_date, aircraft)
+                'a-type': self.compute_due_dates_type_a(start_date, end_date, aircraft),
+                'c-type': self.compute_due_dates_type_c(start_date, end_date, aircraft)
             }
-            print(
-                "INFO: due dates of aircraft {} globally forecasted ELAPSED TIME {}"
-                .format(aircraft,
-                        time.time() - time0))
+            print("INFO: due dates of aircraft {} globally forecasted ELAPSED TIME {}".format(
+                aircraft,
+                time.time() - time0))
 
         return due_dates
 
@@ -318,8 +306,6 @@ class FleetManagerBase:
                            end_date=self.end_date,
                            **kwargs['aircraft_info'])
 
-        # import ipdb
-        # ipdb.set_trace()
         if 'aircraft_tasks' in kwargs.keys():
             self.aircraft_tasks = kwargs['aircraft_tasks']
             self.df_tasks = kwargs['df_tasks']
@@ -327,12 +313,14 @@ class FleetManagerBase:
             self.skills_ratios_A = kwargs['skills_ratios_A']
             self.skills_ratios_C = kwargs['skills_ratios_C']
             self.man_hours = kwargs['man_hours']
+            self.delivery_date = kwargs['delivery date']
             save_pickle(self.aircraft_tasks, 'aircraft_tasks.pkl')
             save_pickle(self.df_tasks, 'df_tasks.pkl')
             save_pickle(self.skills, 'skills.pkl')
             save_pickle(self.skills_ratios_A, 'skills_ratios_A.pkl')
             save_pickle(self.skills_ratios_C, 'skills_ratios_C.pkl')
             save_pickle(self.man_hours, 'man_hours.pkl')
+            save_pickle(self.delivery_date, 'delivery_date.pkl')
         else:
             self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
             self.df_tasks = load_pickle('df_tasks.pkl')
@@ -340,6 +328,8 @@ class FleetManagerBase:
             self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')
             self.skills_ratios_C = load_pickle('skills_ratios_C.pkl')
             self.man_hours = load_pickle('man_hours.pkl')
+            self.delivery_date = load_pickle('delivery_date.pkl')
+
         # self.kwargs_c_checks = kwargs['c-checks']
         # self.kwargs_c_checks_days = kwargs['c-checks-days']
 
@@ -356,6 +346,5 @@ if __name__ == '__main__':
 
     kwargs = book_to_kwargs_MPO(book)
     fmb = FleetManagerBase(**kwargs)
-    fmb.fleet.due_dates_from_info(fmb.calendar.start_date,
-                                  fmb.calendar.end_date)
+    fmb.fleet.due_dates_from_info(fmb.calendar.start_date, fmb.calendar.end_date)
     # print('INFO: TOTAL TIME ELAPSED: {}'.format(time.time() - time0))
