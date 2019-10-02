@@ -12,6 +12,15 @@ from collections import OrderedDict
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
 
+def datetime_to_integer(dt_time):
+    return 10000 * dt_time.year + 100 * dt_time.month + dt_time.day
+
+
+def integer_to_datetime(dt_time):
+    dt_time = str(dt_time)
+    return pd.to_datetime(dt_time)
+
+
 class TasksPlanner:
     def __init__(self, aircraft_tasks, aircraft_info, df_tasks, skills, skills_ratios_A,
                  skills_ratios_C, man_hours, delivery):
@@ -53,40 +62,55 @@ class TasksPlanner:
         return processed_aircraft_tasks
 
     def simulate_lifetime(self, aircraft):
+        #### SET 3: Simulation lifetime ####
+        ## Consists of the following rows: 0 = date (integer value), 1 = FH sim, 2 = FC sim, 3 = month sim, 4 = day sim
+        #simulation reqired to get up-to-date due dates!
         dfh = self.aircraft_info[aircraft]['DFH']
         dfc = self.aircraft_info[aircraft]['DFC']
         index_ac = np.where(self.delivery['A/C TAIL'] == aircraft)[0][0]
         delivery_date = self.delivery['DELIVERY DATE'][index_ac].date()
-        end_date = advance_date(delivery_date, years=50)
+        end_date = integer_to_datetime(20690101)
+        # end_date = advance_date(delivery_date, years=50)
         date_range = pd.date_range(delivery_date, end_date)
-        simulated_lifetime = np.zeros((7, len(date_range)))
-        simulated_lifetime[0, :] = date_range
+
+        simulated_lifetime = np.zeros((6, len(date_range)))
+
+        simulated_lifetime[0, :] = np.array(datetime_to_integer(date_range))
         a_checks_dates = list(self.final_fleet_schedule['A'][aircraft].keys())
         c_checks_dates = list(self.final_fleet_schedule['C'][aircraft].keys())
         c_checks_dates_end = []
 
         for c_check_date in c_checks_dates:
-            real_tat = self.final_fleet_schedule['C'][aircraft][c_check_date]['STATE']['TAT']
-            c_checks_dates_end.append(advance_date(c_checks_dates, days=real_tat))
+            real_tat = self.final_fleet_schedule['C'][aircraft][c_check_date]['TAT']
+            c_checks_dates_end.append(advance_date(c_check_date, days=real_tat))
 
         fh, fc = 0, 0
         for _ in range(len(date_range)):
-            if simulated_lifetime[0, _] in a_checks_dates:
-                simulated_lifetime[5, i] = 1
+            day = integer_to_datetime(int(simulated_lifetime[0, _]))
 
-            for k in range(len(a_checks_dates)):
-                if c_checks_dates[k] <= simulated_lifetime[0, i] <= c_checks_dates:
-                    simulated_lifetime[6, i]
+            if day in a_checks_dates:
+                simulated_lifetime[4, _] = 1
 
-            if simulated_lifetime[5, i] or simulated_lifetime[6, i]:
-                simulated_lifetime[1, i] = np.round(fh, decimals=2)
-                simulated_lifetime[2, i] = np.round(fc, decimals=2)
+            for k in range(len(c_checks_dates)):
+                if c_checks_dates[k] <= day <= c_checks_dates_end[k]:
+                    simulated_lifetime[5, _] = 1
+
+            if simulated_lifetime[4, _] or simulated_lifetime[5, _]:
+                simulated_lifetime[1, _] = np.round(fh, decimals=2)
+                simulated_lifetime[2, _] = np.round(fc, decimals=2)
+
+            else:
+                month = (day.month_name()[0:3]).upper()
+                fh = fh + dfh[month]
+                fc = fc + dfc[month]
+                simulated_lifetime[1, _] = np.round(fh, decimals=2)
+                simulated_lifetime[2, _] = np.round(fc, decimals=2)
 
             #TODO: start counting those days baby
 
+        simulated_lifetime[3, :] = range(1, len(date_range) + 1)
         import ipdb
         ipdb.set_trace()
-        month = (due_date.month_name()[0:3]).upper()
         # temp = temp.date()
 
 
