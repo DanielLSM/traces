@@ -5,6 +5,7 @@
 # the order of the bins is: fill the ones with least amount of aircrafts assigned first
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 
 from datetime import datetime
 from collections import OrderedDict
@@ -21,11 +22,34 @@ def integer_to_datetime(dt_time):
     return pd.to_datetime(dt_time)
 
 
+def Update(lastexecdate, Simulatedlifetime):
+    if type(lastexecdate) == int or type(lastexecdate) == float or isinstance(
+            lastexecdate, np.float64) == True:
+        value = lastexecdate
+    else:
+        value = datetime_to_integer(lastexecdate)
+
+    ## We need to find at what index is the value equal to last exec date
+    idx = np.where(Simulatedlifetime[0, :] == value)
+
+    COPY = deepcopy(Simulatedlifetime)
+    ## Setting the array at 0 at these locations
+    FH = COPY[1, idx[0][0]]
+    FC = COPY[2, idx[0][0]]
+    Days = COPY[3, idx[0][0]]
+    COPY[1, :] = COPY[1, :] - FH
+    COPY[2, :] = COPY[2, :] - FC
+    COPY[3, :] = COPY[3, :] - Days
+
+    return COPY
+
+
 class TasksPlanner:
     def __init__(self, aircraft_tasks, aircraft_info, df_tasks, skills, skills_ratios_A,
-                 skills_ratios_C, man_hours, delivery):
+                 skills_ratios_C, man_hours, delivery, df_aircraft_shaved):
         self.aircraft_tasks = aircraft_tasks
         self.aircraft_info = aircraft_info
+        self.df_aircraft_shaved = df_aircraft_shaved
         self.df_tasks = df_tasks
         self.skills = skills
         self.skills_ratios_A = skills_ratios_A
@@ -58,8 +82,64 @@ class TasksPlanner:
     def _process_aircraft_tasks(self):
         processed_aircraft_tasks = OrderedDict()
         for aircraft in self.aircraft_tasks.keys():
-            self.simulate_lifetime(aircraft)
+            simulated_lifetime = self.simulate_lifetime(aircraft)
+            df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed = self.process_not_null_tasks(
+                aircraft)
+            expected_due_dates = self.compute_initial_tasks_due_dates(df_aircraft_shaved_tasks,
+                                                                      FH_outlast, FC_outlast,
+                                                                      DT_outlast, last_executed,
+                                                                      simulated_lifetime)
         return processed_aircraft_tasks
+
+    def compute_initial_tasks_due_dates(self, df_aircraft_shaved_tasks, FH_outlast, FC_outlast,
+                                        DT_outlast, last_executed, simulated_lifetime):
+        expected_due_dates = []
+        for i in range(len(df_aircraft_shaved_tasks)):
+            if (i in DT_outlast) == True:
+                temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
+                temp = temp.date()
+                import ipdb
+                ipdb.set_trace()
+                value = datetime_to_integer(temp)
+                if value > lastupdated:
+                    raise ValueError('This task should DT be below 2018-07-26')
+                    continue
+                idx = np.where(simulated_lifetime[0, :] == value)
+                temp = df_aircraft_shaved_tasks['LAST EXEC DT']
+                temp = temp.date()
+                TaskHorizon = Update(temp, simulated_lifetime)
+                TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
+        return expected_due_dates
+
+    def process_not_null_tasks(self, aircraft):
+        def find_last_exectued(df_aircraft_shaved_tasks, aircraft):
+            temporary_tasks = self.df_tasks[self.df_tasks['A/C'] == aircraft]
+            n_temporary_tasks = len(temporary_tasks['LAST EXEC DT'])
+            last_executed = 0
+            for i in range(n_temporary_tasks):
+                if type(temporary_tasks['LAST EXEC DT'][i]) == str:
+                    temp = datetime.strptime(temporary_tasks['LAST EXEC DT'][i], "%Y-%m-%d")
+                    temp = datetime_to_integer(temp.date())
+                else:
+                    temp = datetime_to_integer(temporary_tasks['LAST EXEC DT'][i])
+                if temp > last_executed:
+                    last_executed = temp
+            return last_executed
+
+        df_aircraft_shaved_tasks = deepcopy(self.df_aircraft_shaved[aircraft])
+        last_executed = find_last_exectued(df_aircraft_shaved_tasks, aircraft)
+        df_aircraft_shaved_tasks = df_aircraft_shaved_tasks.drop_duplicates(['ITEM'], keep='first')
+        FH_outlast = np.where(df_aircraft_shaved_tasks['LAST EXEC FH'].notnull())[0]
+        FC_outlast = np.where(df_aircraft_shaved_tasks['LAST EXEC FC'].notnull())[0]
+        DT_outlast = np.where(pd.isna(df_aircraft_shaved_tasks['LAST EXEC DT']) == False)[0]
+        df_aircraft_shaved_tasks['LAST EXEC DT'] = df_aircraft_shaved_tasks['LAST EXEC DT'].fillna(
+            df_aircraft_shaved_tasks['LIMIT EXEC DT'])
+        df_aircraft_shaved_tasks['LAST EXEC FC'] = df_aircraft_shaved_tasks['LAST EXEC FC'].fillna(
+            df_aircraft_shaved_tasks['LIMIT FC'])
+        df_aircraft_shaved_tasks['LAST EXEC FH'] = df_aircraft_shaved_tasks['LAST EXEC FH'].fillna(
+            df_aircraft_shaved_tasks['LIMIT FH'])
+
+        return df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed
 
     def simulate_lifetime(self, aircraft):
         #### SET 3: Simulation lifetime ####
@@ -109,9 +189,7 @@ class TasksPlanner:
             #TODO: start counting those days baby
 
         simulated_lifetime[3, :] = range(1, len(date_range) + 1)
-        import ipdb
-        ipdb.set_trace()
-        # temp = temp.date()
+        return simulated_lifetime
 
 
 class TaskBin:

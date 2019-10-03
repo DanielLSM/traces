@@ -600,7 +600,7 @@ class SchedulerEDF(FleetManagerBase):
 
     self.optimizer_tasks = TasksPlanner(self.aircraft_tasks,self.fleet.aircraft_info,
         self.df_tasks, self.skills, self.skills_ratios_A, self.skills_ratios_C, self.man_hours, 
-        self.delivery_date)
+        self.delivery_date, self.df_aircraft_shaved)
     all_schedules = self.optimizer_tasks.solve_tasks()
 
     # global_schedule_tasks = OrderedDict()

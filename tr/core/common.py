@@ -308,6 +308,7 @@ class FleetManagerBase:
 
         if 'aircraft_tasks' in kwargs.keys():
             self.aircraft_tasks = kwargs['aircraft_tasks']
+            self.df_aircraft_shaved = kwargs['df_aircraft_shaved']
             self.df_tasks = kwargs['df_tasks']
             self.skills = kwargs['skills']
             self.skills_ratios_A = kwargs['skills_ratios_A']
@@ -316,6 +317,7 @@ class FleetManagerBase:
             self.delivery_date = kwargs['delivery date']
             save_pickle(self.aircraft_tasks, 'aircraft_tasks.pkl')
             save_pickle(self.df_tasks, 'df_tasks.pkl')
+            save_pickle(self.df_aircraft_shaved, 'df_aircraft_shaved.pkl')
             save_pickle(self.skills, 'skills.pkl')
             save_pickle(self.skills_ratios_A, 'skills_ratios_A.pkl')
             save_pickle(self.skills_ratios_C, 'skills_ratios_C.pkl')
@@ -323,6 +325,7 @@ class FleetManagerBase:
             save_pickle(self.delivery_date, 'delivery_date.pkl')
         else:
             self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
+            self.df_aircraft_shaved = load_pickle('df_aircraft_shaved.pkl')
             self.df_tasks = load_pickle('df_tasks.pkl')
             self.skills = load_pickle('skills.pkl')
             self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')

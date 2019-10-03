@@ -159,15 +159,15 @@ def book_to_kwargs_tasks(book):
     def process_df(df):
         for _ in df.keys():
             df[_] = df[_].apply(lambda x: x.strip() if type(x) is str else x)
-        df['PER FH'].fillna(False, inplace=True)
-        df['PER FC'].fillna(False, inplace=True)
-        df['LIMIT FH'].fillna(False, inplace=True)
-        df['LIMIT FC'].fillna(False, inplace=True)
-        df['LIMIT EXEC DT'].fillna(False, inplace=True)
-        df['LAST EXEC FC'].fillna(False, inplace=True)
-        df['LAST EXEC FH'].fillna(False, inplace=True)
-        df['LAST EXEC DT'].fillna(False, inplace=True)
-        df['PER CALEND'].fillna(False, inplace=True)
+        # df['PER FH'].fillna(0, inplace=True)
+        # df['PER FC'].fillna(0, inplace=True)
+        # df['LIMIT FH'].fillna(False, inplace=True)
+        # df['LIMIT FC'].fillna(False, inplace=True)
+        # df['LIMIT EXEC DT'].fillna(False, inplace=True)
+        # df['LAST EXEC FC'].fillna(False, inplace=True)
+        # df['LAST EXEC FH'].fillna(False, inplace=True)
+        # df['LAST EXEC DT'].fillna(False, inplace=True)
+        # df['PER CALEND'].fillna(0, inplace=True)
         df['TASK BY BLOCK'].fillna("C-CHECK", inplace=True)
         # do not use things without due dates
         # df = df[(df['PER FH'] != False) | (df['PER FC'] != False) |
@@ -288,14 +288,18 @@ def book_to_kwargs_tasks(book):
 
         #Now dropping the rows without due dates
         df_aircraft = df_aircraft.drop(df_aircraft.index[index_labels])
+        # import ipdb
+        # ipdb.set_trace()
         return df_aircraft, tasks_no_date, index_labels, amount_remove
 
     aircraft_clustered_tasks = OrderedDict()
+    df_aircraft_shaved = OrderedDict()
     for aircraft in aircraft_tasks.keys():
         df_aircraft = df.copy(deep=True)
         df_aircraft = df_aircraft[df_aircraft['A/C'] == aircraft]
         df_aircraft = df_aircraft.reset_index(drop=True)
         df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(df_aircraft)
+        df_aircraft_shaved[aircraft] = df_aircraft
         aircraft_clustered_tasks[aircraft] = OrderedDict()
 
         for line_idx in list(df_aircraft.index):
@@ -398,6 +402,7 @@ def book_to_kwargs_tasks(book):
     return {
         'aircraft_tasks': aircraft_clustered_tasks,
         'df_tasks': df,
+        'df_aircraft_shaved': df_aircraft_shaved,
         'skills': skills,
         'skills_ratios_A': skills_ratios_A,
         'skills_ratios_C': skills_ratios_C,
