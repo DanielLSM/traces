@@ -22,7 +22,7 @@ def integer_to_datetime(dt_time):
     return pd.to_datetime(dt_time)
 
 
-def Update(lastexecdate, Simulatedlifetime):
+def update(lastexecdate, Simulatedlifetime):
     if type(lastexecdate) == int or type(lastexecdate) == float or isinstance(
             lastexecdate, np.float64) == True:
         value = lastexecdate
@@ -82,33 +82,115 @@ class TasksPlanner:
     def _process_aircraft_tasks(self):
         processed_aircraft_tasks = OrderedDict()
         for aircraft in self.aircraft_tasks.keys():
-            simulated_lifetime = self.simulate_lifetime(aircraft)
+            simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end = self.simulate_lifetime(
+                aircraft)
             df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed = self.process_not_null_tasks(
                 aircraft)
-            expected_due_dates = self.compute_initial_tasks_due_dates(df_aircraft_shaved_tasks,
-                                                                      FH_outlast, FC_outlast,
-                                                                      DT_outlast, last_executed,
-                                                                      simulated_lifetime)
+            expected_due_dates = self.compute_initial_tasks_due_dates(
+                df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed,
+                simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end)
         return processed_aircraft_tasks
 
     def compute_initial_tasks_due_dates(self, df_aircraft_shaved_tasks, FH_outlast, FC_outlast,
-                                        DT_outlast, last_executed, simulated_lifetime):
+                                        DT_outlast, last_executed, simulated_lifetime,
+                                        a_checks_dates, c_checks_dates, c_checks_dates_end):
+        calculated_due_dates = []
         expected_due_dates = []
+        unscheduled_task = []
+        typetask = []
         for i in range(len(df_aircraft_shaved_tasks)):
-            if (i in DT_outlast) == True:
-                temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                temp = temp.date()
-                import ipdb
-                ipdb.set_trace()
-                value = datetime_to_integer(temp)
-                if value > lastupdated:
+            #option 1
+            if i in DT_outlast:
+                last_exec_value = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
+                last_exec_value = last_exec_value.date()
+                last_exec_value = datetime_to_integer(last_exec_value)
+                if last_exec_value > last_executed:
                     raise ValueError('This task should DT be below 2018-07-26')
                     continue
-                idx = np.where(simulated_lifetime[0, :] == value)
-                temp = df_aircraft_shaved_tasks['LAST EXEC DT']
+                idx = np.where(simulated_lifetime[0, :] == last_exec_value)
+                temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
                 temp = temp.date()
-                TaskHorizon = Update(temp, simulated_lifetime)
+                TaskHorizon = update(temp, simulated_lifetime)
                 TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
+            elif (i in FH_outlast) or (i in FC_outlast):
+                comparison_dates = []
+                if i in FH_outlast:
+                    last_exec_margin = np.where(
+                        simulated_lifetime[1, :] > df_aircraft_shaved_tasks['LAST EXEC FH'].iat[i])
+                    last_exec_value = simulated_lifetime[0, last_exec_margin[0][0] - 1]
+                    comparison_dates.append(last_exec_margin)
+                if i in FC_outlast:
+                    last_exec_margin = np.where(
+                        simulated_lifetime[2, :] > df_aircraft_shaved_tasks['LAST EXEC FC'].iat[i])
+                    last_exec_value = simulated_lifetime[0, last_exec_margin[0][0] - 1]
+                    comparison_dates.append(last_exec_margin)
+                value = min(comparison_dates)
+                idx = np.where(simulated_lifetime[0, :] == value)
+                TaskHorizon = update(value, simulated_lifetime)
+                TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
+                #TODO continue the task extravaganza
+            else:
+                #option 5 no dates given, using limits
+                if not pd.isna(df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]) or not pd.isna(
+                        df_aircraft_shaved_tasks['LAST EXEC FH'].iat[i]) or not pd.isna(
+                            df_aircraft_shaved_tasks['LAST EXEC FC'].iat[i]):
+                    comparison_dates = []
+                    if not pd.isna(df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]):
+                        last_exec_value = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
+                        last_exec_value = last_exec_value.date()
+                        last_exec_value = datetime_to_integer(last_exec_value)
+                        comparison_dates.append(last_exec_value)
+                    if not pd.isna(df_aircraft_shaved_tasks['LAST EXEC FH'].iat[i]):
+                        last_exec_margin = np.where(simulated_lifetime[1, :] >
+                                                    df_aircraft_shaved_tasks['LAST EXEC FH'].iat[i])
+                        last_exec_value = simulated_lifetime[0, last_exec_margin[0][0] - 1]
+                        comparison_dates.append(last_exec_value)
+                    if not pd.isna(df_aircraft_shaved_tasks['LAST EXEC FC'].iat[i]):
+                        last_exec_margin = np.where(simulated_lifetime[2, :] >
+                                                    df_aircraft_shaved_tasks['LAST EXEC FC'].iat[i])
+                        last_exec_value = simulated_lifetime[0, last_exec_margin[0][0] - 1]
+                        comparison_dates.append(last_exec_value)
+                    last_exec_value = min(comparison_dates)
+                    if last_exec_value > last_executed:
+                        if df_aircraft_shaved_tasks['TASK BY BLOCK'].iat[i] == 'C_CHECK':
+                            if last_exec_value < c_checks_dates[0]:
+                                calculated_due_dates.append(integer_to_datetime(last_exec_value))
+                                idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
+                                idx = idx + 1000  #randomly advancing 1000 days...
+                                expected_due_date = simulated_lifetime[0, idx]
+                                number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                                item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                                expected_due_dates.append((number_of_task, expected_due_dates))
+                                typetask.append('C-Task')
+                                unscheduled_task.append(item_of_task)
+                                continue
+                            else:
+                                expected_due_dates.append((number_of_task, last_exec_value))
+                                continue
+                            expected_due_dates.append((number_of_task, last_exec_value))
+                            continue
+                    idx = np.where(simulated_lifetime[0, :] == last_exec_value)
+                    temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
+                    temp = temp.date()
+                    TaskHorizon = update(temp, simulated_lifetime)
+                    TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
+                else:
+                    #le bullshit special
+                    calculated_due_dates.append(integer_to_datetime(last_exec_value))
+                    idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
+                    idx = idx + 1000  #randomly advancing 1000 days...
+                    expected_due_date = simulated_lifetime[0, idx]
+                    number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                    item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                    task_by_block = df_aircraft_shaved_tasks['TASK BY BLOCK'].iat[i]
+                    expected_due_dates.append((number_of_task, expected_due_dates))
+                    typetask.append(task_by_block)
+                    unscheduled_task.append(item_of_task)
+            #option 1 task has multiple FH/FC/CALmonths/Caldays
+            if True:
+                pass
+        import ipdb
+        ipdb.set_trace()
         return expected_due_dates
 
     def process_not_null_tasks(self, aircraft):
@@ -186,10 +268,8 @@ class TasksPlanner:
                 simulated_lifetime[1, _] = np.round(fh, decimals=2)
                 simulated_lifetime[2, _] = np.round(fc, decimals=2)
 
-            #TODO: start counting those days baby
-
         simulated_lifetime[3, :] = range(1, len(date_range) + 1)
-        return simulated_lifetime
+        return simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end
 
 
 class TaskBin:
