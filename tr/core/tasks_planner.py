@@ -19,7 +19,12 @@ def datetime_to_integer(dt_time):
 
 def integer_to_datetime(dt_time):
     dt_time = str(dt_time)
-    return pd.to_datetime(dt_time)
+    try:
+        date = pd.to_datetime(dt_time)
+    except:
+        import ipdb
+        ipdb.set_trace()
+    return date
 
 
 def update(lastexecdate, Simulatedlifetime):
@@ -37,9 +42,11 @@ def update(lastexecdate, Simulatedlifetime):
     FH = COPY[1, idx[0][0]]
     FC = COPY[2, idx[0][0]]
     Days = COPY[3, idx[0][0]]
+    months = COPY[6, idx[0][0]]
     COPY[1, :] = COPY[1, :] - FH
     COPY[2, :] = COPY[2, :] - FC
     COPY[3, :] = COPY[3, :] - Days
+    COPY[6, :] = COPY[3, :] - months
 
     return COPY
 
@@ -154,13 +161,14 @@ class TasksPlanner:
                     if last_exec_value > last_executed:
                         if df_aircraft_shaved_tasks['TASK BY BLOCK'].iat[i] == 'C_CHECK':
                             if last_exec_value < c_checks_dates[0]:
-                                calculated_due_dates.append(integer_to_datetime(last_exec_value))
+                                calculated_due_dates.append(
+                                    integer_to_datetime(int(last_exec_value)))
                                 idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
                                 idx = idx + 1000  #randomly advancing 1000 days...
                                 expected_due_date = simulated_lifetime[0, idx]
                                 number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
                                 item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
-                                expected_due_dates.append((number_of_task, expected_due_dates))
+                                expected_due_dates.append((number_of_task, expected_due_date))
                                 typetask.append('C-Task')
                                 unscheduled_task.append(item_of_task)
                                 continue
@@ -170,13 +178,13 @@ class TasksPlanner:
                             expected_due_dates.append((number_of_task, last_exec_value))
                             continue
                     idx = np.where(simulated_lifetime[0, :] == last_exec_value)
-                    temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                    temp = temp.date()
-                    TaskHorizon = update(temp, simulated_lifetime)
+                    # temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
+                    # temp = temp.date()
+                    TaskHorizon = update(last_exec_value, simulated_lifetime)
                     TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
                 else:
                     #le bullshit special
-                    calculated_due_dates.append(integer_to_datetime(last_exec_value))
+                    calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
                     idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
                     idx = idx + 1000  #randomly advancing 1000 days...
                     expected_due_date = simulated_lifetime[0, idx]
@@ -186,9 +194,61 @@ class TasksPlanner:
                     expected_due_dates.append((number_of_task, expected_due_dates))
                     typetask.append(task_by_block)
                     unscheduled_task.append(item_of_task)
+                    continue
             #option 1 task has multiple FH/FC/CALmonths/Caldays
-            if True:
-                pass
+            fh_limit = df_aircraft_shaved_tasks['PER FH'].iat[i]
+            fc_limit = df_aircraft_shaved_tasks['PER FC'].iat[i]
+            cal_months_limit = df_aircraft_shaved_tasks['PER MONTH'].iat[i]
+            cal_days_limit = df_aircraft_shaved_tasks['PER DAY'].iat[i]
+            if fh_limit != 0 or fc_limit != 0 or cal_months_limit != 0 or cal_days_limit != 0:
+                sorted_list = []
+                if fh_limit != 0:
+                    due_date_idx = np.searchsorted(TaskHorizon[1, :], fh_limit, side='right')
+                    sorted_list.append(due_date_idx)
+                if fc_limit != 0:
+                    due_date_idx = np.searchsorted(TaskHorizon[2, :], fc_limit, side='right')
+                    sorted_list.append(due_date_idx)
+                if cal_months_limit != 0:
+                    idx10 = np.where(simulated_lifetime[0, :] == TaskHorizon[0, 0])[0][0]
+                    dayz = int(simulated_lifetime[0, idx10 - 1]) % 100
+                    sorted_list.append(np.searchsorted(TaskHorizon[6, :], cal_months_limit) + dayz)
+                if cal_days_limit != 0:
+                    due_date_idx = cal_days_limit - 1
+                    sorted_list.append(due_date_idx)
+
+                min_due_date = int(min(sorted_list) - 1)
+                # last_exec_value = min(comparison_dates)
+                if df_aircraft_shaved_tasks['TASK BY BLOCK'].iat[i] == 'C_CHECK':
+                    if TaskHorizon[0, min_due_date] < datetime_to_integer(c_checks_dates[0]):
+                        calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
+                        idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
+                        idx = idx + 1000  #randomly advancing 1000 days...
+                        expected_due_date = simulated_lifetime[0, idx]
+                        number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                        item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                        expected_due_dates.append((number_of_task, expected_due_date))
+                        typetask.append('C-Task')
+                        unscheduled_task.append(item_of_task)
+                    else:
+                        expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
+                elif TaskHorizon[0, min_due_date] < datetime_to_integer(a_checks_dates[0]):
+                    if TaskHorizon[0, min_due_date] < datetime_to_integer(c_checks_dates[0]):
+                        calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
+                        idx = np.where(simulated_lifetime[0, :] == datetime_to_integer(
+                            c_checks_dates[-1]))[0][0]
+                        idx = idx + 1000  #randomly advancing 1000 days...
+                        expected_due_date = simulated_lifetime[0, idx]
+                        number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                        item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                        expected_due_dates.append((number_of_task, expected_due_date))
+                        typetask.append('A-Task')
+                        unscheduled_task.append(item_of_task)
+                    else:
+                        expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
+                else:
+                    number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                    expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
+
         import ipdb
         ipdb.set_trace()
         return expected_due_dates
@@ -235,7 +295,7 @@ class TasksPlanner:
         # end_date = advance_date(delivery_date, years=50)
         date_range = pd.date_range(delivery_date, end_date)
 
-        simulated_lifetime = np.zeros((6, len(date_range)))
+        simulated_lifetime = np.zeros((7, len(date_range)))
 
         simulated_lifetime[0, :] = np.array(datetime_to_integer(date_range))
         a_checks_dates = list(self.final_fleet_schedule['A'][aircraft].keys())
@@ -247,8 +307,21 @@ class TasksPlanner:
             c_checks_dates_end.append(advance_date(c_check_date, days=real_tat))
 
         fh, fc = 0, 0
+
+        day = integer_to_datetime(int(simulated_lifetime[0, 0]))
+        if day.day == 1:
+            month_th = -1
+        else:
+            month_th = 0
+
         for _ in range(len(date_range)):
             day = integer_to_datetime(int(simulated_lifetime[0, _]))
+            #TODO this is kinda nonsense from airline
+            if day.day == 1:
+                month_th += 1
+                simulated_lifetime[6, _] = month_th
+            else:
+                simulated_lifetime[6, _] = month_th
 
             if day in a_checks_dates:
                 simulated_lifetime[4, _] = 1
