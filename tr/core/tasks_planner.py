@@ -9,6 +9,7 @@ from copy import deepcopy
 
 from datetime import datetime
 from collections import OrderedDict
+from tqdm import tqdm
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
@@ -78,7 +79,13 @@ class TasksPlanner:
             import ipdb
             ipdb.set_trace()
 
-        self.processed_aircraft_tasks = self._process_aircraft_tasks()
+        try:
+            self.processed_aircraft_tasks = load_pickle("processed_aircraft_tasks.pkl")
+        except:
+            self.processed_aircraft_tasks = self._process_aircraft_tasks()
+            save_pickle(self.processed_aircraft_tasks, "processed_aircraft_tasks.pkl")
+
+        self.solve_tasks()
 
         import ipdb
         ipdb.set_trace()
@@ -88,14 +95,27 @@ class TasksPlanner:
 
     def _process_aircraft_tasks(self):
         processed_aircraft_tasks = OrderedDict()
-        for aircraft in self.aircraft_tasks.keys():
+        for aircraft in tqdm(self.aircraft_tasks.keys()):
+            # import ipdb
             simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end = self.simulate_lifetime(
                 aircraft)
             df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed = self.process_not_null_tasks(
                 aircraft)
-            expected_due_dates = self.compute_initial_tasks_due_dates(
+            due_dates_dict, calculated_due_dates, typetask, unscheduled_task, cancer_tasks = self.compute_initial_tasks_due_dates(
                 df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed,
                 simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end)
+            processed_aircraft_tasks[aircraft] = {
+                'simulated_lifetime': simulated_lifetime,
+                'expected_due_dates': due_dates_dict,
+                'df_aircraft_shaved_tasks': df_aircraft_shaved_tasks,
+                'a_checks_dates': a_checks_dates,
+                'c_checks_dates': c_checks_dates,
+                'c_checks_dates_end': c_checks_dates_end,
+                'calculated_due_dates': calculated_due_dates,
+                'typetask': typetask,
+                'unscheduled_task': unscheduled_task,
+                'cancer_tasks': cancer_tasks
+            }
         return processed_aircraft_tasks
 
     def compute_initial_tasks_due_dates(self, df_aircraft_shaved_tasks, FH_outlast, FC_outlast,
@@ -105,6 +125,7 @@ class TasksPlanner:
         expected_due_dates = []
         unscheduled_task = []
         typetask = []
+        cancer_tasks = []
         for i in range(len(df_aircraft_shaved_tasks)):
             #option 1
             if i in DT_outlast:
@@ -178,14 +199,17 @@ class TasksPlanner:
                             expected_due_dates.append((number_of_task, last_exec_value))
                             continue
                     idx = np.where(simulated_lifetime[0, :] == last_exec_value)
-                    # temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                    # temp = temp.date()
                     TaskHorizon = update(last_exec_value, simulated_lifetime)
                     TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
                 else:
                     #le bullshit special
                     calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
-                    idx = np.where(simulated_lifetime[0, :] == c_checks_dates[-1])[0][0]
+                    try:
+                        idx = np.where(simulated_lifetime[0, :] == datetime_to_integer(
+                            c_checks_dates[-1]))[0][0]
+                    except:
+                        import ipdb
+                        ipdb.set_trace()
                     idx = idx + 1000  #randomly advancing 1000 days...
                     expected_due_date = simulated_lifetime[0, idx]
                     number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
@@ -232,30 +256,37 @@ class TasksPlanner:
                     else:
                         expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
                 elif TaskHorizon[0, min_due_date] < datetime_to_integer(a_checks_dates[0]):
-                    if TaskHorizon[0, min_due_date] < datetime_to_integer(c_checks_dates[0]):
-                        calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
-                        idx = np.where(simulated_lifetime[0, :] == datetime_to_integer(
-                            c_checks_dates[-1]))[0][0]
-                        idx = idx + 1000  #randomly advancing 1000 days...
-                        expected_due_date = simulated_lifetime[0, idx]
-                        number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
-                        item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
-                        expected_due_dates.append((number_of_task, expected_due_date))
-                        typetask.append('A-Task')
-                        unscheduled_task.append(item_of_task)
-                    else:
-                        expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
+                    if len(c_checks_dates) != 0:  #TODO double check this please
+                        if TaskHorizon[0, min_due_date] < datetime_to_integer(c_checks_dates[0]):
+                            calculated_due_dates.append(integer_to_datetime(int(last_exec_value)))
+                            idx = np.where(simulated_lifetime[0, :] == datetime_to_integer(
+                                c_checks_dates[-1]))[0][0]
+                            idx = idx + 1000  #randomly advancing 1000 days...
+                            expected_due_date = simulated_lifetime[0, idx]
+                            number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                            item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                            expected_due_dates.append((number_of_task, expected_due_date))
+                            typetask.append('A-Task')
+                            unscheduled_task.append(item_of_task)
+                            continue
+                        else:
+                            expected_due_dates.append(
+                                (number_of_task, TaskHorizon[0, min_due_date]))
+                            continue
+                    item_of_task = df_aircraft_shaved_tasks['ITEM'].iat[i]
+                    number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
+                    cancer_tasks.append(item_of_task)
                 else:
                     number_of_task = df_aircraft_shaved_tasks['NR TASK'].iat[i]
                     expected_due_dates.append((number_of_task, TaskHorizon[0, min_due_date]))
 
-        import ipdb
-        ipdb.set_trace()
-        return expected_due_dates
+        due_dates_dict = dict(expected_due_dates)
+        return due_dates_dict, calculated_due_dates, typetask, unscheduled_task, cancer_tasks
 
     def process_not_null_tasks(self, aircraft):
         def find_last_exectued(df_aircraft_shaved_tasks, aircraft):
             temporary_tasks = self.df_tasks[self.df_tasks['A/C'] == aircraft]
+            temporary_tasks = temporary_tasks.reset_index(drop=True)
             n_temporary_tasks = len(temporary_tasks['LAST EXEC DT'])
             last_executed = 0
             for i in range(n_temporary_tasks):
