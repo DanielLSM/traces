@@ -85,13 +85,104 @@ class TasksPlanner:
             self.processed_aircraft_tasks = self._process_aircraft_tasks()
             save_pickle(self.processed_aircraft_tasks, "processed_aircraft_tasks.pkl")
 
-        self.solve_tasks()
+        # self.build_calendar()
 
+        task_calendar = self.solve_tasks()
+        self.task_calendar_to_excel(task_calendar)
+        print("INFO: Tasks planning finished with sucess")
         import ipdb
         ipdb.set_trace()
 
-    def solve_tasks(self):
+    def task_calendar_to_excel(self):
         pass
+
+    def solve_tasks(self):
+        task_calendar = OrderedDict()
+        processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
+        for a_check in tqdm(self.final_calendar['A'].keys()):
+            day_state = self.final_calendar['A'][a_check]
+            if day_state['MAINTENANCE'] and day_state['ASSIGNMENT']:
+                aircraft = day_state['ASSIGNMENT']
+                processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
+                    aircraft, processed_aircraft_tasks, a_check)
+                task_calendar[a_check] = {
+                    'check_day': a_check,
+                    'aircraft': aircraft,
+                    'tasks_per_aircraft': tasks_per_aircraft
+                }
+                import ipdb
+                ipdb.set_trace()
+        return task_calendar
+
+    def process_maintenance_day(self, processed_aircraft_tasks, aircraft, a_check):
+        tasks_per_aircraft = OrderedDict()
+        for ac in aircraft:
+            import ipdb
+            ipdb.set_trace()
+            tasks_executed = []
+            idx_check = processed_aircraft_tasks[ac]['a_checks_dates'].index(a_check)
+            for task_number in processed_aircraft_tasks[ac]['expected_due_dates']:
+                previous_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check]
+                next_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check + 1]
+                expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][task_number]
+                if previous_check <= expected_due_date <= next_check:
+                    tasks_executed.append((task_number, previous_check))
+            tasks_per_aircraft[ac] = dict(tasks_executed)
+            processed_aircraft_tasks = self.reschedule_tasks(processed_aircraft_tasks, aircraft,
+                                                             tasks_executed)
+        return processed_aircraft_tasks, tasks_per_aircraft
+
+    def reschedule_tasks(self, processed_aircraft_tasks, aircraft, tasks_executed):
+
+        df_aircraft_shaved_tasks = processed_aircraft_tasks['df_aircraft_shaved_tasks']
+        simulated_lifetime = processed_aircraft_tasks['simulated_lifetime']
+
+        for task_executed in tasks_executed.keys():
+
+            last_exec_value = tasks_executed[task_executed]
+            idx = np.where(simulated_lifetime[0, :] == last_exec_value)
+            TaskHorizon = update(last_exec_value, simulated_lifetime)
+            TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
+
+            idx_from_task_number = np.where(
+                df_aircraft_shaved_tasks['NR TASK'] == task_executed)[0][0]
+            i = idx_from_task_number
+
+            import ipdb
+            ipdb.set_trace()
+
+            #option 1 task has multiple FH/FC/CALmonths/Caldays
+            fh_limit = df_aircraft_shaved_tasks['PER FH'].iat[i]
+            fc_limit = df_aircraft_shaved_tasks['PER FC'].iat[i]
+            cal_months_limit = df_aircraft_shaved_tasks['PER MONTH'].iat[i]
+            cal_days_limit = df_aircraft_shaved_tasks['PER DAY'].iat[i]
+            if fh_limit != 0 or fc_limit != 0 or cal_months_limit != 0 or cal_days_limit != 0:
+                sorted_list = []
+                if fh_limit != 0:
+                    due_date_idx = np.searchsorted(TaskHorizon[1, :], fh_limit, side='right')
+                    sorted_list.append(due_date_idx)
+                if fc_limit != 0:
+                    due_date_idx = np.searchsorted(TaskHorizon[2, :], fc_limit, side='right')
+                    sorted_list.append(due_date_idx)
+                if cal_months_limit != 0:
+                    idx10 = np.where(simulated_lifetime[0, :] == TaskHorizon[0, 0])[0][0]
+                    dayz = int(simulated_lifetime[0, idx10 - 1]) % 100
+                    sorted_list.append(np.searchsorted(TaskHorizon[6, :], cal_months_limit) + dayz)
+                if cal_days_limit != 0:
+                    due_date_idx = cal_days_limit - 1
+                    sorted_list.append(due_date_idx)
+
+                min_due_date = int(min(sorted_list) - 1)
+                expected_due_date = simulated_lifetime[0, min_due_date]
+                processed_aircraft_tasks[aircraft]['expected_due_date'] = expected_due_date
+            else:
+                raise "So this doesnt makes sense!"
+
+        return processed_aircraft_tasks
+
+    # def build_calendar(self):
+    #     for a_check in self.final_calendar['A'].keys():
+    #         state_
 
     def _process_aircraft_tasks(self):
         processed_aircraft_tasks = OrderedDict()
