@@ -90,6 +90,8 @@ class TasksPlanner:
         # self.build_calendar()
 
         task_calendar = self.solve_tasks()
+        import ipdb
+        ipdb.set_trace()
         self.task_calendar_to_excel(task_calendar)
         import ipdb
         ipdb.set_trace()
@@ -168,8 +170,8 @@ class TasksPlanner:
     def solve_tasks(self):
         task_calendar = OrderedDict()
         processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
-        # import ipdb
-        # ipdb.set_trace()
+        import ipdb
+        ipdb.set_trace()
         for a_check in tqdm(self.final_calendar['A'].keys()):
             day_state = self.final_calendar['A'][a_check]
             if day_state['MAINTENANCE'] and day_state['ASSIGNMENT']:
@@ -181,8 +183,6 @@ class TasksPlanner:
                     'aircraft': aircraft,
                     'tasks_per_aircraft': tasks_per_aircraft
                 }
-                # import ipdb
-                # ipdb.set_trace()
         return task_calendar
 
     def process_maintenance_day(self, processed_aircraft_tasks, aircraft, a_check):
