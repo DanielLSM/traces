@@ -152,25 +152,39 @@ class TasksPlanner:
         processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
         import ipdb
         ipdb.set_trace()
-        for a_check in tqdm(self.final_calendar['A'].keys()):
-            day_state = self.final_calendar['A'][a_check]
-            if day_state['MAINTENANCE'] and day_state['ASSIGNMENT']:
+        for date in tqdm(self.final_calendar['A'].keys()):
+            day_state_A = self.final_calendar['A'][date]
+            day_state_C = self.final_calendar['C'][date]
+
+            # only A-check tasks
+            if day_state_A['MAINTENANCE']:
+                if day_state_A['MERGED FLAG']:
+                    # due date will be different here, we can do all a/c check tasks and due date from end of c-check
+                    pass
+                else:
+                    pass
+
+            # only C-check tasks
+            if day_state_C['MAINTENANCE']:
+                pass
+
+            if day_state_A['MAINTENANCE'] or day_state_C['MAINTENANCE']:
                 aircraft = day_state['ASSIGNMENT']
                 processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
-                    processed_aircraft_tasks, aircraft, a_check)
+                    processed_aircraft_tasks, aircraft, date)
                 task_calendar[a_check] = {
-                    'check_day': a_check,
+                    'check_day': date,
                     'aircraft': aircraft,
                     'tasks_per_aircraft': tasks_per_aircraft
                 }
         return task_calendar
 
     # lets solve the inventorization first
-    def process_maintenance_day_a_check(self,
-                                        processed_aircraft_tasks,
-                                        aircraft,
-                                        a_check,
-                                        type_check='A-CHECK'):
+    def process_maintenance_day(self,
+                                processed_aircraft_tasks,
+                                aircraft,
+                                a_check,
+                                type_check='A-CHECK'):
         tasks_per_aircraft = OrderedDict()
         for ac in aircraft:
             tasks_executed = []
@@ -245,14 +259,9 @@ class TasksPlanner:
 
         return processed_aircraft_tasks
 
-    # def build_calendar(self):
-    #     for a_check in self.final_calendar['A'].keys():
-    #         state_
-
     def _process_aircraft_tasks(self):
         processed_aircraft_tasks = OrderedDict()
         for aircraft in tqdm(self.aircraft_tasks.keys()):
-            # import ipdb
             simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end = self.simulate_lifetime(
                 aircraft)
             df_aircraft_shaved_tasks, FH_outlast, FC_outlast, DT_outlast, last_executed = self.process_not_null_tasks(
