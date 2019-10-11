@@ -90,6 +90,7 @@ class TasksPlanner:
         # self.build_calendar()
 
         task_calendar = self.solve_tasks()
+        # task_allocation_calendar = self.solve_man_hours(task_calendar)
         import ipdb
         ipdb.set_trace()
         self.task_calendar_to_excel(task_calendar)
@@ -135,30 +136,6 @@ class TasksPlanner:
                     dict1['SKILL'].append(skill)
                     dict1['TASK BY BLOCK'].append(block)
 
-                    # import ipdb
-                    # ipdb.set_trace()
-
-                # for day in self.global_schedule_tasks[aircraft]['a_check_tasks'].keys():
-                #     for item in self.global_schedule_tasks[aircraft]['a_check_tasks'][day]:
-                #         item_idxs = df[(df['A/C'] == aircraft)
-                #                        & (df['ITEM'] == item)].index.values.astype(int)
-                #         # item_idxs = item_idxs.tolist()
-                #         assert len(item_idxs) != 0
-                #         refs = df['REF TAP'][item_idxs].tolist()
-                #         descriptions = df['DESCRIPTION'][item_idxs].tolist()
-                #         blocks = df['BLOCK'][item_idxs].tolist()
-                #         skills = df['SKILL'][item_idxs].tolist()
-                #         taskbblock = df['TASK BY BLOCK'][item_idxs].tolist()
-                #         for _ in range(len(refs)):
-                #             dict1['A/C ID'].append(aircraft)
-                #             dict1['MAINTENANCE OPPORTUNITY'].append(day.date().isoformat())
-                #             dict1['ITEM'].append(item)
-                #             dict1['REF TAP'].append(refs[_])
-                #             dict1['DESCRIPTION'].append(descriptions[_])
-                #             dict1['BLOCK'].append(blocks[_])
-                #             dict1['SKILL'].append(skills[_])
-                #             dict1['TASK BY BLOCK'].append(taskbblock[_])
-
             df = pd.DataFrame(dict1, columns=dict1.keys())
 
             len(df)
@@ -166,6 +143,9 @@ class TasksPlanner:
 
         import ipdb
         ipdb.set_trace()
+
+    def solve_man_hours(self, task_calendar):
+        pass
 
     def solve_tasks(self):
         task_calendar = OrderedDict()
@@ -185,7 +165,12 @@ class TasksPlanner:
                 }
         return task_calendar
 
-    def process_maintenance_day(self, processed_aircraft_tasks, aircraft, a_check):
+    # lets solve the inventorization first
+    def process_maintenance_day_a_check(self,
+                                        processed_aircraft_tasks,
+                                        aircraft,
+                                        a_check,
+                                        type_check='A-CHECK'):
         tasks_per_aircraft = OrderedDict()
         for ac in aircraft:
             tasks_executed = []
@@ -209,6 +194,7 @@ class TasksPlanner:
                                                              tasks_per_aircraft[ac])
         return processed_aircraft_tasks, tasks_per_aircraft
 
+    # c_check is more complex, you got to figure it out
     def reschedule_tasks(self, processed_aircraft_tasks, ac, tasks_executed):
 
         df_aircraft_shaved_tasks = processed_aircraft_tasks[ac]['df_aircraft_shaved_tasks']
@@ -572,3 +558,45 @@ class TaskBin:
     @staticmethod
     def order_bins():
         pass
+
+    # def solve_tasks(self):
+    #     task_calendar = OrderedDict()
+    #     processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
+    #     import ipdb
+    #     ipdb.set_trace()
+    #     for a_check in tqdm(self.final_calendar['A'].keys()):
+    #         day_state = self.final_calendar['A'][a_check]
+    #         if day_state['MAINTENANCE'] and day_state['ASSIGNMENT']:
+    #             aircraft = day_state['ASSIGNMENT']
+    #             processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
+    #                 processed_aircraft_tasks, aircraft, a_check)
+    #             task_calendar[a_check] = {
+    #                 'check_day': a_check,
+    #                 'aircraft': aircraft,
+    #                 'tasks_per_aircraft': tasks_per_aircraft
+    #             }
+    #     return task_calendar
+
+    # def process_maintenance_day(self, processed_aircraft_tasks, aircraft, a_check):
+    #     tasks_per_aircraft = OrderedDict()
+    #     for ac in aircraft:
+    #         tasks_executed = []
+    #         idx_check = processed_aircraft_tasks[ac]['a_checks_dates'].index(a_check)
+    #         for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
+    #             previous_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check]
+    #             previous_check = datetime_to_integer(previous_check)
+    #             if a_check != processed_aircraft_tasks[ac]['a_checks_dates'][-1]:
+    #                 next_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check + 1]
+    #                 next_check = datetime_to_integer(next_check)
+    #                 expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][
+    #                     task_number]
+    #                 try:
+    #                     if previous_check <= expected_due_date <= next_check:
+    #                         tasks_executed.append((task_number, previous_check))
+    #                 except:
+    #                     import ipdb
+    #                     ipdb.set_trace()
+    #         tasks_per_aircraft[ac] = dict(tasks_executed)
+    #         processed_aircraft_tasks = self.reschedule_tasks(processed_aircraft_tasks, ac,
+    #                                                          tasks_per_aircraft[ac])
+    #     return processed_aircraft_tasks, tasks_per_aircraft
