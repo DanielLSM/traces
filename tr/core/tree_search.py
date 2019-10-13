@@ -271,6 +271,7 @@ class TreeDaysPlanner:
                 if fleet_state_0[on_c_calendar]['TOTAL-RATIO'] > 0.40:
                     if on_c_calendar not in on_maintenance_merged_0:
                         on_maintenance_merged.append(on_c_calendar)
+                        merged_flag = True
             elif self.calendar_tree['A'].depth() <= 311:
                 if fleet_state_0[on_c_calendar]['TOTAL-RATIO'] > 0.50:
                     if on_c_calendar not in on_maintenance_merged_0:
@@ -319,7 +320,7 @@ class TreeDaysPlanner:
                     calendar_1[day]['SLOTS'] = slots
                     calendar_1[day]['MAINTENANCE'] = True
                     calendar_1[day]['ASSIGNMENT'] = on_maintenance
-                    calendar_1[day]['MERGED_FLAG'] = merged_flag
+                    calendar_1[day]['MERGED FLAG'] = merged_flag
                     calendar_1[day]['ASSIGNED STATE'] = {}
                     for _ in on_maintenance:
                         calendar_1[day]['ASSIGNED STATE'][_] = fleet_state_1[_]

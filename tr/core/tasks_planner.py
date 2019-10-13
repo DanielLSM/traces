@@ -91,8 +91,6 @@ class TasksPlanner:
 
         task_calendar = self.solve_tasks()
         # task_allocation_calendar = self.solve_man_hours(task_calendar)
-        import ipdb
-        ipdb.set_trace()
         self.task_calendar_to_excel(task_calendar)
         import ipdb
         ipdb.set_trace()
@@ -100,6 +98,8 @@ class TasksPlanner:
 
     def task_calendar_to_excel(self, task_calendar):
 
+        import ipdb
+        ipdb.set_trace()
         print("INFO: Saving xlsx files")
         for ac in tqdm(self.processed_aircraft_tasks.keys()):
             processed_aircraft_tasks = self.processed_aircraft_tasks[ac]
@@ -150,59 +150,143 @@ class TasksPlanner:
     def solve_tasks(self):
         task_calendar = OrderedDict()
         processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
-        import ipdb
-        ipdb.set_trace()
         for date in tqdm(self.final_calendar['A'].keys()):
+            # if datetime_to_integer(date) == 20190409:
+            #     import ipdb
+            #     ipdb.set_trace()
             day_state_A = self.final_calendar['A'][date]
             day_state_C = self.final_calendar['C'][date]
+            task_calendar[date] = {}
+            merged_A_with_C = []
 
-            # only A-check tasks
             if day_state_A['MAINTENANCE']:
-                if day_state_A['MERGED FLAG']:
-                    # due date will be different here, we can do all a/c check tasks and due date from end of c-check
-                    pass
-                else:
-                    pass
+                aircraft_A = day_state_A['ASSIGNMENT']
 
-            # only C-check tasks
             if day_state_C['MAINTENANCE']:
-                pass
+                aircraft_C = day_state_C['ASSIGNMENT']
+                aircraft_C = aircraft_C if isinstance(aircraft_C, list) else [aircraft_C]
 
-            if day_state_A['MAINTENANCE'] or day_state_C['MAINTENANCE']:
-                aircraft = day_state['ASSIGNMENT']
+            if day_state_A['MERGED FLAG']:
+                for aircraft_merged_c in aircraft_C:
+                    if aircraft_merged_c in aircraft_A:
+                        merged_A_with_C.append(aircraft_merged_c)
+                        aircraft_A.remove(aircraft_merged_c)
+                for merged_ac in merged_A_with_C:
+                    aircraft_C.remove(merged_ac)
+
+            if day_state_A['MAINTENANCE']:
+                # do usual maintenance on all A-tasks
                 processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
-                    processed_aircraft_tasks, aircraft, date)
-                task_calendar[a_check] = {
-                    'check_day': date,
-                    'aircraft': aircraft,
+                    processed_aircraft_tasks, aircraft_A, date, type_check='A-CHECK')
+                task_calendar[date]['A'] = {
+                    'aircraft': aircraft_A,
                     'tasks_per_aircraft': tasks_per_aircraft
                 }
+
+            if day_state_C['MAINTENANCE']:
+                # do usual maintenance on all tasks
+                if len(aircraft_C) != 0:
+                    processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
+                        processed_aircraft_tasks, aircraft_C, date, type_check='C-CHECK')
+                    task_calendar[date]['C'] = {
+                        'aircraft': aircraft_C,
+                        'tasks_per_aircraft': tasks_per_aircraft
+                    }
+                if len(merged_A_with_C) != 0:
+                    processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
+                        processed_aircraft_tasks, merged_A_with_C, date, type_check='ALL')
+                    task_calendar[date]['C MERGED WITH A'] = {
+                        'aircraft': merged_A_with_C,
+                        'tasks_per_aircraft': tasks_per_aircraft
+                    }
+                # import ipdb
+                # ipdb.set_trace()
+
         return task_calendar
 
     # lets solve the inventorization first
     def process_maintenance_day(self,
                                 processed_aircraft_tasks,
                                 aircraft,
-                                a_check,
+                                date,
                                 type_check='A-CHECK'):
         tasks_per_aircraft = OrderedDict()
+
         for ac in aircraft:
-            tasks_executed = []
-            idx_check = processed_aircraft_tasks[ac]['a_checks_dates'].index(a_check)
-            for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
+            df_ac = processed_aircraft_tasks[ac]['df_aircraft_shaved_tasks']
+            if type_check == 'A-CHECK' or type_check == 'ALL':
+                idx_check = processed_aircraft_tasks[ac]['a_checks_dates'].index(date)
                 previous_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check]
                 previous_check = datetime_to_integer(previous_check)
-                if a_check != processed_aircraft_tasks[ac]['a_checks_dates'][-1]:
+                if date != processed_aircraft_tasks[ac]['a_checks_dates'][-1]:
                     next_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check + 1]
                     next_check = datetime_to_integer(next_check)
-                    expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][
-                        task_number]
+                else:
+                    # make a next check based on the the time from the last one
+                    # find number of days between last a-checks
+                    ultimo_check = integer_to_datetime(
+                        processed_aircraft_tasks[ac]['a_checks_dates'][-1])
+                    penultimo_check = integer_to_datetime(
+                        processed_aircraft_tasks[ac]['a_checks_dates'][-2])
                     try:
-                        if previous_check <= expected_due_date <= next_check:
-                            tasks_executed.append((task_number, previous_check))
+                        days = (ultimo_check - penultimo_check).days
+                        next_check = advance_date(ultimo_check, days=days)
+                        next_check = datetime_to_integer(next_check)
                     except:
                         import ipdb
                         ipdb.set_trace()
+
+                if type_check == 'ALL':
+                    next_check_a = next_check
+
+            #######################################################################################
+            if type_check == 'C-CHECK' or type_check == 'ALL':
+                idx_check = processed_aircraft_tasks[ac]['c_checks_dates'].index(date)
+                previous_check = processed_aircraft_tasks[ac]['c_checks_dates_end'][idx_check]
+                previous_check = datetime_to_integer(previous_check)
+                if date != processed_aircraft_tasks[ac]['c_checks_dates'][-1]:
+                    next_check = processed_aircraft_tasks[ac]['c_checks_dates'][idx_check + 1]
+                    next_check = datetime_to_integer(next_check)
+
+                else:
+                    # make a next check based on the the time from the last one
+                    # find number of days between last c-checks
+                    ultimo_check = integer_to_datetime(
+                        processed_aircraft_tasks[ac]['c_checks_dates'][-1])
+                    if len(processed_aircraft_tasks[ac]['c_checks_dates']) != 1:
+                        penultimo_check = integer_to_datetime(
+                            processed_aircraft_tasks[ac]['c_checks_dates'][-2])
+                        days = (ultimo_check - penultimo_check).days
+                        next_check = advance_date(ultimo_check, days=days)
+                        next_check = datetime_to_integer(next_check)
+                    else:
+                        next_check = advance_date(ultimo_check, days=700)
+                        next_check = datetime_to_integer(next_check)
+                if type_check == 'ALL':
+                    next_check_c = next_check
+
+            tasks_executed = []
+            # import ipdb
+            # ipdb.set_trace()
+            for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
+
+                block = df_ac[df_ac['NR TASK'] == task_number]['TASK BY BLOCK'][task_number]
+                if (type_check == 'ALL'):
+                    expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][
+                        task_number]
+                    if block == 'A-CHECK':
+                        if previous_check <= expected_due_date <= next_check_a:
+                            tasks_executed.append((task_number, previous_check))
+                    elif block == 'C-CHECK':
+                        if previous_check <= expected_due_date <= next_check_c:
+                            tasks_executed.append((task_number, previous_check))
+                ############################################################################
+                elif type_check == block:
+                    expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][
+                        task_number]
+                    if previous_check <= expected_due_date <= next_check:
+                        tasks_executed.append((task_number, previous_check))
+
             tasks_per_aircraft[ac] = dict(tasks_executed)
             processed_aircraft_tasks = self.reschedule_tasks(processed_aircraft_tasks, ac,
                                                              tasks_per_aircraft[ac])
@@ -211,6 +295,7 @@ class TasksPlanner:
     # c_check is more complex, you got to figure it out
     def reschedule_tasks(self, processed_aircraft_tasks, ac, tasks_executed):
 
+        # TODO: we need to check here if we reschdule from the last day of the c-check
         df_aircraft_shaved_tasks = processed_aircraft_tasks[ac]['df_aircraft_shaved_tasks']
         simulated_lifetime = processed_aircraft_tasks[ac]['simulated_lifetime']
 
@@ -222,13 +307,9 @@ class TasksPlanner:
             TaskHorizon = update(last_exec_value, simulated_lifetime)
             TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
 
-            try:
-                idx_from_task_number = np.where(
-                    df_aircraft_shaved_tasks['NR TASK'] == task_executed)[0][0]
-                i = idx_from_task_number
-            except:
-                import ipdb
-                ipdb.set_trace()
+            idx_from_task_number = np.where(
+                df_aircraft_shaved_tasks['NR TASK'] == task_executed)[0][0]
+            i = idx_from_task_number
 
             #option 1 task has multiple FH/FC/CALmonths/Caldays
             fh_limit = df_aircraft_shaved_tasks['PER FH'].iat[i]
@@ -260,6 +341,7 @@ class TasksPlanner:
         return processed_aircraft_tasks
 
     def _process_aircraft_tasks(self):
+        print("INFO: processing aircraft tasks")
         processed_aircraft_tasks = OrderedDict()
         for aircraft in tqdm(self.aircraft_tasks.keys()):
             simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end = self.simulate_lifetime(
@@ -549,6 +631,9 @@ class TasksPlanner:
                 simulated_lifetime[2, _] = np.round(fc, decimals=2)
 
         simulated_lifetime[3, :] = range(1, len(date_range) + 1)
+        # if aircraft == 'Aircraft-2':
+        #     import ipdb
+        #     ipdb.set_trace()
         return simulated_lifetime, a_checks_dates, c_checks_dates, c_checks_dates_end
 
 
