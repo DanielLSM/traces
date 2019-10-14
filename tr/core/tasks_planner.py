@@ -85,11 +85,11 @@ class TasksPlanner:
             self.processed_aircraft_tasks = self._process_aircraft_tasks()
             save_pickle(self.processed_aircraft_tasks, "processed_aircraft_tasks.pkl")
 
-        # self.processed_aircraft_tasks = self._process_aircraft_tasks()
+        try:
+            task_calendar = load_pickle("task_calendar.pkl")
+        except:
+            task_calendar = self.solve_tasks()
 
-        # self.build_calendar()
-
-        task_calendar = self.solve_tasks()
         # task_allocation_calendar = self.solve_man_hours(task_calendar)
         self.task_calendar_to_excel(task_calendar)
         import ipdb
@@ -98,28 +98,81 @@ class TasksPlanner:
 
     def task_calendar_to_excel(self, task_calendar):
 
-        import ipdb
-        ipdb.set_trace()
         print("INFO: Saving xlsx files")
         for ac in tqdm(self.processed_aircraft_tasks.keys()):
             processed_aircraft_tasks = self.processed_aircraft_tasks[ac]
             df_aircraft = processed_aircraft_tasks['df_aircraft_shaved_tasks']
-            a_check_dates = processed_aircraft_tasks['a_checks_dates']
+            a_check_dates = deepcopy(processed_aircraft_tasks['a_checks_dates'])
+            c_check_dates = deepcopy(processed_aircraft_tasks['c_checks_dates'])
+            c_check_dates_end = processed_aircraft_tasks['c_checks_dates_end']
+            merged_a_c_check = []
+
+            for date in a_check_dates:
+                if date in c_check_dates:
+                    merged_a_c_check.append(date)
+            for date in merged_a_c_check:
+                a_check_dates.remove(date)
+                c_check_dates.remove(date)
+
+            full_dates_a = {integer_to_datetime(x): 'A-CHECK' for x in a_check_dates}
+            full_dates_c = {integer_to_datetime(x): 'C-CHECK' for x in c_check_dates}
+            full_merged = {integer_to_datetime(x): 'MERGED' for x in merged_a_c_check}
+            full_merged.update(full_dates_a)
+            full_merged.update(full_dates_c)
+            full_merged_sorted = sorted(full_merged.items(), key=lambda kv: kv[0])
+            full_merged_sorted = OrderedDict(full_merged_sorted)
+
             print("INFO: Saving {} task and check planning".format(ac))
             dict1 = OrderedDict()
             dict1['A/C ID'] = []
             dict1['MAINTENANCE OPPORTUNITY'] = []
+            dict1['START'] = []
+            dict1['END'] = []
             dict1['ITEM CLUSTER'] = []
-            dict1['REF TAP'] = []
+            dict1['REF AIRLINE'] = []
             dict1['DESCRIPTION'] = []
             dict1['BLOCK'] = []
             dict1['SKILL'] = []
             dict1['TASK BY BLOCK'] = []
+            # import ipdb
+            # ipdb.set_trace()
 
-            for a_check in a_check_dates:
-                a_check_date = integer_to_datetime(a_check)
-                assert ac in task_calendar[a_check_date]['tasks_per_aircraft'].keys()
-                for task in task_calendar[a_check_date]['tasks_per_aircraft'][ac].keys():
+            for check in full_merged_sorted.keys():
+                check_date = integer_to_datetime(check)
+                type_check = full_merged_sorted[check]
+                if type_check == 'A-CHECK':
+                    type_check = 'A'
+                elif type_check == 'C-CHECK':
+                    type_check = 'C'
+                elif type_check == 'MERGED':
+                    type_check = 'C MERGED WITH A'
+                assert ac in task_calendar[check_date][type_check]['tasks_per_aircraft'].keys()
+                if full_merged_sorted[check] == 'A-CHECK':
+                    start = check_date.date().isoformat()
+                    end = check_date.date().isoformat()
+                    code = self.final_fleet_schedule['A'][ac][check_date]['STATE']['A-SN']
+                    code = 'A ' + str(code)
+                elif full_merged_sorted[check] == 'C-CHECK':
+                    idx_check = processed_aircraft_tasks['c_checks_dates'].index(check_date)
+                    date_end = processed_aircraft_tasks['c_checks_dates_end'][idx_check]
+                    start = check_date.date().isoformat()
+                    end = date_end.date().isoformat()
+                    code = self.final_fleet_schedule['C'][ac][check_date]['STATE']['C-SN']
+                    code = 'C ' + str(code)
+                elif full_merged_sorted[check] == 'MERGED':
+                    try:
+                        idx_check = processed_aircraft_tasks['c_checks_dates'].index(check_date)
+                    except:
+                        import ipdb
+                        ipdb.set_trace()
+                    date_end = processed_aircraft_tasks['c_checks_dates_end'][idx_check]
+                    start = check_date.date().isoformat()
+                    end = date_end.date().isoformat()
+                    code_a = self.final_fleet_schedule['A'][ac][check_date]['STATE']['A-SN']
+                    code_c = self.final_fleet_schedule['C'][ac][check_date]['STATE']['C-SN']
+                    code = 'C ' + code_c + ' + A ' + code_a
+
+                for task in task_calendar[check_date][type_check]['tasks_per_aircraft'][ac].keys():
                     idx_from_task_number = np.where(df_aircraft['NR TASK'] == task)[0][0]
                     i = idx_from_task_number
                     item = df_aircraft['ITEM'].iat[i]
@@ -127,10 +180,13 @@ class TasksPlanner:
                     description = df_aircraft['DESCRIPTION'].iat[i]
                     skill = df_aircraft['SKILL'].iat[i]
                     block = df_aircraft['TASK BY BLOCK'].iat[i]
+
                     dict1['A/C ID'].append(ac)
-                    dict1['MAINTENANCE OPPORTUNITY'].append(a_check_date.date().isoformat())
+                    dict1['MAINTENANCE OPPORTUNITY'].append(code)
+                    dict1['START'].append(start)
+                    dict1['END'].append(end)
                     dict1['ITEM CLUSTER'].append(item)
-                    dict1['REF TAP'].append(ref_tap)
+                    dict1['REF AIRLINE'].append(ref_tap)
                     dict1['DESCRIPTION'].append(description)
                     dict1['BLOCK'].append(block)
                     dict1['SKILL'].append(skill)
@@ -266,8 +322,6 @@ class TasksPlanner:
                     next_check_c = next_check
 
             tasks_executed = []
-            # import ipdb
-            # ipdb.set_trace()
             for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
 
                 block = df_ac[df_ac['NR TASK'] == task_number]['TASK BY BLOCK'][task_number]
