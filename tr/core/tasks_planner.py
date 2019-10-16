@@ -87,17 +87,172 @@ class TasksPlanner:
 
         # self.processed_aircraft_tasks = self._process_aircraft_tasks()
 
+        # task_calendar = self.solve_tasks()
+
         try:
             task_calendar = load_pickle("task_calendar.pkl")
         except:
             task_calendar = self.solve_tasks()
             save_pickle(task_calendar, "task_calendar.pkl")
 
-        # task_allocation_calendar = self.solve_man_hours(task_calendar)
-        self.task_calendar_to_excel(task_calendar)
+        metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check, metrics_per_check = self._process_task_calendar_metrics(
+            task_calendar)
+        self._analyse_metrics(metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check,
+                              metrics_per_check)
+
         import ipdb
         ipdb.set_trace()
+        # task_allocation_calendar = self.solve_man_hours(task_calendar)
+        self.task_calendar_to_excel(task_calendar)
         print("INFO: Tasks planning finished with sucess")
+
+    def _analyse_metrics(self, metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check,
+                         metrics_per_check):
+        ##################################################################################
+        #### analyse global, then per check, then per aircraft per check
+        #### finally per check per day
+
+        import matplotlib.pyplot as plt
+
+        def analyse_list(data_vector,
+                         print_metrics=False,
+                         draw=False,
+                         label='some string',
+                         extra_label='ratios'):
+            # plt.plot(data_vector)
+            plt.hist(data_vector, bins='auto')
+            plt.ylabel(label + ' ' + extra_label)
+            plt.show()
+            import ipdb
+            ipdb.set_trace()
+
+        metrics = {
+            'global': {},
+            'per_check': {},
+            'per_aircraft_per_check': {},
+            'per_aircraft_per_date': {}
+        }
+        #################
+        # global_metrics
+        global_metrics_list = []
+        for type_check in metrics_per_check.keys():
+            for ratio in metrics_per_check[type_check]:
+                global_metrics_list.append(ratio)
+
+        metrics['global'] = analyse_list(global_metrics_list,
+                                         print_metrics=True,
+                                         draw=True,
+                                         label='global')
+        ##########################
+        # global_metrics_per_check
+        for type_check in metrics_per_check.keys():
+            metrics['per_check'][type_check] = anaylise_list(metrics_per_check[type_check],
+                                                             print_metrics=True,
+                                                             draw=True,
+                                                             label=type_check)
+
+        ########################
+        # global_metrics_per aircraft per check
+        for aircraft in metrics_per_aircraft_per_check.keys():
+            metrics['per_aircraft_per_check'][aircraft] = {}
+            for type_check in metrics_per_aircraft_per_check[aircraft].keys():
+                metrics['per_aircraft_per_check'][aircraft][type_check] = anaylise_list(
+                    metrics_per_check[type_check],
+                    print_metrics=True,
+                    draw=True,
+                    label=aircraft + ' ' + type_check)
+
+        # global_metrics_per_aircraft per date
+        for aircraft in metrics_ratio_per_day_aircraft.keys():
+            metrics['per_aircraft_per_date'][aircraft] = {}
+            for type_check in metrics_ratio_per_day_aircraft[aircraft].keys():
+                metrics['per_aircraft_per_date'][aircraft][type_check] = {}
+                for date in metrics_ratio_per_day_aircraft[aircraft][type_check].keys():
+                    date_string = date.date().isoformat()
+                    metrics['per_aircraft_per_date'][aircraft][type_check][date] = anaylise_list(
+                        metrics_ratio_per_day_aircraft[aircraft][type_check][date],
+                        print_metrics=True,
+                        draw=True,
+                        label=aircraft + ' ' + type_check + ' ' + date_string)
+
+        import ipdb
+        ipdb.set_trace()
+
+    def _process_task_calendar_metrics(self, task_calendar):
+        print('INFO: processing metrics from the calendar of tasks ')
+        aircraft = list(self.processed_aircraft_tasks.keys())
+        ratios_per_aircraft = {ac: {'A': {}, 'C': {}, 'C MERGED WITH A': {}} for ac in aircraft}
+        ratios_per_aircraft_per_check = {
+            ac: {
+                'A': {},
+                'C': {},
+                'C MERGED WITH A': {}
+            }
+            for ac in aircraft
+        }
+        ratios_per_check = {'A': {}, 'C': {}, 'C MERGED WITH A': {}}
+
+        # re-ordering metrics per aircraft
+        ########################################################################################
+        for day in tqdm(task_calendar.keys()):
+            for type_check in task_calendar[day].keys():
+                for aircraft in task_calendar[day][type_check]['aircraft']:
+                    ratios_per_aircraft[aircraft][type_check][day] = {}
+                    for task in task_calendar[day][type_check]['ratios_per_aircraft'][
+                            aircraft].keys():
+                        ratio = task_calendar[day][type_check]['ratios_per_aircraft'][aircraft][
+                            task]
+                        if 0 <= ratio <= 1:
+                            ratios_per_aircraft[aircraft][type_check][day][task] = ratio
+                            ratios_per_aircraft_per_check[aircraft][type_check][task] = ratio
+                            ratios_per_check[type_check][task] = ratio
+        ##########################################################################################
+        # computing metrics per check
+        metrics_per_check = {'A': [], 'C': [], 'C MERGED WITH A': []}
+
+        for type_check in ratios_per_check.keys():
+            for task in ratios_per_check[type_check].keys():
+                ratio = ratios_per_check[type_check][task]
+                metrics_per_check[type_check].append(ratio)
+
+        ##########################################################################################
+        # computing metrics per aircraft per check
+        aircraft = list(self.processed_aircraft_tasks.keys())
+        metrics_per_aircraft_per_check = {
+            ac: {
+                'A': [],
+                'C': [],
+                'C MERGED WITH A': []
+            }
+            for ac in aircraft
+        }
+
+        for aircraft in ratios_per_aircraft_per_check.keys():
+            for type_check in ratios_per_aircraft_per_check[aircraft].keys():
+                for task in ratios_per_aircraft_per_check[aircraft][type_check].keys():
+                    ratio = ratios_per_aircraft_per_check[aircraft][type_check][task]
+                    metrics_per_aircraft_per_check[aircraft][type_check].append(ratio)
+
+        ##########################################################################################
+        # computing metrics per date per aircraft per check
+        aircraft = list(self.processed_aircraft_tasks.keys())
+        metrics_ratio_per_day_aircraft = {
+            ac: {
+                'A': {},
+                'C': {},
+                'C MERGED WITH A': {}
+            }
+            for ac in aircraft
+        }
+        for aircraft in ratios_per_aircraft.keys():
+            for type_check in ratios_per_aircraft[aircraft].keys():
+                for day in ratios_per_aircraft[aircraft][type_check].keys():
+                    metrics_ratio_per_day_aircraft[aircraft][type_check][day] = []
+                    for task in ratios_per_aircraft[aircraft][type_check][day].keys():
+                        ratio = ratios_per_aircraft[aircraft][type_check][day][task]
+                        metrics_ratio_per_day_aircraft[aircraft][type_check][day].append(ratio)
+
+        return metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check, metrics_per_check
 
     def task_calendar_to_excel(self, task_calendar):
 
@@ -349,9 +504,10 @@ class TasksPlanner:
                                                              previous_check_start,
                                                              expected_due_date)
                 else:
+                    #when its false, its basically a task that has used the limit as last executed date,
+                    # it has no information past that
                     ratio_exec = False
 
-                expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][task_number]
                 block = df_ac[df_ac['NR TASK'] == task_number]['TASK BY BLOCK'][task_number]
                 if (type_check == 'ALL'):
                     if block == 'A-CHECK':
@@ -387,11 +543,12 @@ class TasksPlanner:
         actual_days = (previous_check_time - last_executed_time).days
 
         ratio = actual_days / interval_max_days
-        # try:
-        #     assert ratio <= 1
-        # except:
-        #     import ipdb
-        #     ipdb.set_trace()
+        # the reason is previous_check is before the last_executed_date
+        # since the limit was used in the future as last executed date
+        # if (0 <= ratio <= 1):
+        #     return ratio
+        # else:
+        #     return False
         return ratio
 
     # c_check is more complex, you got to figure it out
