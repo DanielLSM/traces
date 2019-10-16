@@ -11,7 +11,7 @@ from datetime import datetime
 from collections import OrderedDict
 from tqdm import tqdm
 
-from tr.core.utils import advance_date, save_pickle, load_pickle
+from tr.core.utils import advance_date, save_pickle, load_pickle, get_best_distribution
 
 
 def datetime_to_integer(dt_time):
@@ -113,15 +113,26 @@ class TasksPlanner:
         #### finally per check per day
 
         import matplotlib.pyplot as plt
+        import seaborn as sns
+        from scipy import stats
 
         def analyse_list(data_vector,
                          print_metrics=False,
                          draw=False,
                          label='some string',
-                         extra_label='ratios'):
+                         extra_label='utilization ratios'):
             # plt.plot(data_vector)
-            plt.hist(data_vector, bins='auto')
-            plt.ylabel(label + ' ' + extra_label)
+            plt.title(label)
+            data_vector = [x for x in data_vector if x > 0.2]
+            statistics = stats.describe(data_vector)
+            # best_dist, best_p, best_params = get_best_distribution(data_vector)
+            plt.xlabel(extra_label)
+            plt.ylabel('# tasks')
+            plt.grid(True)
+            plt.hist(data_vector, bins=20)
+            plt.show()
+            plt.title('Kernel density estimation')
+            sns.distplot(data_vector, hist=False, rug=True, label='mean = ' + str(statistics.mean))
             plt.show()
             import ipdb
             ipdb.set_trace()
@@ -142,21 +153,21 @@ class TasksPlanner:
         metrics['global'] = analyse_list(global_metrics_list,
                                          print_metrics=True,
                                          draw=True,
-                                         label='global')
+                                         label='global fleet')
         ##########################
         # global_metrics_per_check
         for type_check in metrics_per_check.keys():
-            metrics['per_check'][type_check] = anaylise_list(metrics_per_check[type_check],
-                                                             print_metrics=True,
-                                                             draw=True,
-                                                             label=type_check)
+            metrics['per_check'][type_check] = analyse_list(metrics_per_check[type_check],
+                                                            print_metrics=True,
+                                                            draw=True,
+                                                            label='global ' + type_check)
 
         ########################
         # global_metrics_per aircraft per check
         for aircraft in metrics_per_aircraft_per_check.keys():
             metrics['per_aircraft_per_check'][aircraft] = {}
             for type_check in metrics_per_aircraft_per_check[aircraft].keys():
-                metrics['per_aircraft_per_check'][aircraft][type_check] = anaylise_list(
+                metrics['per_aircraft_per_check'][aircraft][type_check] = analyse_list(
                     metrics_per_check[type_check],
                     print_metrics=True,
                     draw=True,
@@ -169,7 +180,7 @@ class TasksPlanner:
                 metrics['per_aircraft_per_date'][aircraft][type_check] = {}
                 for date in metrics_ratio_per_day_aircraft[aircraft][type_check].keys():
                     date_string = date.date().isoformat()
-                    metrics['per_aircraft_per_date'][aircraft][type_check][date] = anaylise_list(
+                    metrics['per_aircraft_per_date'][aircraft][type_check][date] = analyse_list(
                         metrics_ratio_per_day_aircraft[aircraft][type_check][date],
                         print_metrics=True,
                         draw=True,
