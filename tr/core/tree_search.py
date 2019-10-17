@@ -646,6 +646,7 @@ class TreeDaysPlanner:
         result = self.solve(root, type_check=type_check)
         final_schedule = self.calendar_to_schedule(result, type_check)
         metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
+        save_pickle(metrics_dict, "metrics_checks_dict_{}.pkl".format(type_check))
         self.final_calendar[type_check] = result.calendar
         # self.final_schedule[type_check] = final_schedule
         save_pickle(self.final_calendar, "{}_checks.pkl".format(type_check))

@@ -13,6 +13,13 @@ from tqdm import tqdm
 
 from tr.core.utils import advance_date, save_pickle, load_pickle, get_best_distribution
 
+##################
+# data science LUL
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+from scipy import stats
+
 
 def datetime_to_integer(dt_time):
     return 10000 * dt_time.year + 100 * dt_time.month + dt_time.day
@@ -95,6 +102,8 @@ class TasksPlanner:
             task_calendar = self.solve_tasks()
             save_pickle(task_calendar, "task_calendar.pkl")
 
+        self._process_final_metrics_checks()
+
         metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check, metrics_per_check = self._process_task_calendar_metrics(
             task_calendar)
         self._analyse_metrics(metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check,
@@ -106,36 +115,42 @@ class TasksPlanner:
         self.task_calendar_to_excel(task_calendar)
         print("INFO: Tasks planning finished with sucess")
 
+    def analyse_list(self,
+                     data_vector,
+                     print_metrics=False,
+                     draw=False,
+                     title='some string',
+                     xlabel='some string',
+                     ylabel='# tasks'):
+        # plt.plot(data_vector)
+        data_vector = [x for x in data_vector if x > 0.2]
+        statistics = stats.describe(data_vector)
+        # best_dist, best_p, best_params = get_best_distribution(data_vector)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.axvline(statistics.mean, color='k', linestyle='dashed', linewidth=1)
+        # red_patch = mpatches.Patch(label='utilization ratio={}'.format(statistics.mean / 750))
+        blue_patch = mpatches.Patch(
+            label='total maintenance opportunities={}'.format(len(data_vector) - 1))
+
+        # plt.legend(handles=[red_patch, blue_patch])
+        plt.legend(handles=[blue_patch])
+
+        plt.grid(True)
+        plt.title(title)
+        plt.hist(data_vector, bins=20)
+        plt.show()
+        plt.title('Kernel density estimation')
+        sns.distplot(data_vector, hist=False, rug=True, label='mean = ' + str(statistics.mean))
+        plt.show()
+        import ipdb
+        ipdb.set_trace()
+
     def _analyse_metrics(self, metrics_ratio_per_day_aircraft, metrics_per_aircraft_per_check,
                          metrics_per_check):
         ##################################################################################
         #### analyse global, then per check, then per aircraft per check
         #### finally per check per day
-
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        from scipy import stats
-
-        def analyse_list(data_vector,
-                         print_metrics=False,
-                         draw=False,
-                         label='some string',
-                         extra_label='utilization ratios'):
-            # plt.plot(data_vector)
-            plt.title(label)
-            data_vector = [x for x in data_vector if x > 0.2]
-            statistics = stats.describe(data_vector)
-            # best_dist, best_p, best_params = get_best_distribution(data_vector)
-            plt.xlabel(extra_label)
-            plt.ylabel('# tasks')
-            plt.grid(True)
-            plt.hist(data_vector, bins=20)
-            plt.show()
-            plt.title('Kernel density estimation')
-            sns.distplot(data_vector, hist=False, rug=True, label='mean = ' + str(statistics.mean))
-            plt.show()
-            import ipdb
-            ipdb.set_trace()
 
         metrics = {
             'global': {},
@@ -150,28 +165,28 @@ class TasksPlanner:
             for ratio in metrics_per_check[type_check]:
                 global_metrics_list.append(ratio)
 
-        metrics['global'] = analyse_list(global_metrics_list,
-                                         print_metrics=True,
-                                         draw=True,
-                                         label='global fleet')
+        metrics['global'] = self.analyse_list(global_metrics_list,
+                                              print_metrics=True,
+                                              draw=True,
+                                              title='global fleet')
         ##########################
         # global_metrics_per_check
         for type_check in metrics_per_check.keys():
-            metrics['per_check'][type_check] = analyse_list(metrics_per_check[type_check],
-                                                            print_metrics=True,
-                                                            draw=True,
-                                                            label='global ' + type_check)
+            metrics['per_check'][type_check] = self.analyse_list(metrics_per_check[type_check],
+                                                                 print_metrics=True,
+                                                                 draw=True,
+                                                                 title='global ' + type_check)
 
         ########################
         # global_metrics_per aircraft per check
         for aircraft in metrics_per_aircraft_per_check.keys():
             metrics['per_aircraft_per_check'][aircraft] = {}
             for type_check in metrics_per_aircraft_per_check[aircraft].keys():
-                metrics['per_aircraft_per_check'][aircraft][type_check] = analyse_list(
+                metrics['per_aircraft_per_check'][aircraft][type_check] = self.analyse_list(
                     metrics_per_check[type_check],
                     print_metrics=True,
                     draw=True,
-                    label=aircraft + ' ' + type_check)
+                    title=aircraft + ' ' + type_check)
 
         # global_metrics_per_aircraft per date
         for aircraft in metrics_ratio_per_day_aircraft.keys():
@@ -180,14 +195,54 @@ class TasksPlanner:
                 metrics['per_aircraft_per_date'][aircraft][type_check] = {}
                 for date in metrics_ratio_per_day_aircraft[aircraft][type_check].keys():
                     date_string = date.date().isoformat()
-                    metrics['per_aircraft_per_date'][aircraft][type_check][date] = analyse_list(
-                        metrics_ratio_per_day_aircraft[aircraft][type_check][date],
-                        print_metrics=True,
-                        draw=True,
-                        label=aircraft + ' ' + type_check + ' ' + date_string)
+                    metrics['per_aircraft_per_date'][aircraft][type_check][
+                        date] = self.analyse_list(
+                            metrics_ratio_per_day_aircraft[aircraft][type_check][date],
+                            print_metrics=True,
+                            draw=True,
+                            title=aircraft + ' ' + type_check + ' ' + date_string)
 
         import ipdb
         ipdb.set_trace()
+
+    def _process_final_metrics_checks(self):
+        try:
+            metrics_checks_A = load_pickle("metrics_checks_dict_A.pkl")
+            metrics_checks_C = load_pickle("metrics_checks_dict_C.pkl")
+        except:
+            raise "Metrics for checks non-existant"
+
+        #weirdest ipdb bug ever
+        # import ipdb
+        # ipdb.set_trace()
+
+        #For A-Checks
+        self.analyse_list(metrics_checks_A['FH'],
+                          title='Fleet A-CHECK FH',
+                          xlabel='Flight Hours',
+                          ylabel="#Checks")
+        # self.analyse_list(metrics_checks_A['FC'],
+        #                   title='Fleet A-CHECK FC',
+        #                   xlabel='Flight Cycles',
+        #                   ylabel="#Checks")
+        # self.analyse_list(metrics_checks_A['DY'],
+        #                   title='Fleet A-CHECK DY',
+        #                   xlabel='Calendar Days',
+        #                   ylabel="#Checks")
+
+        #For C-Checks
+        self.analyse_list(metrics_checks_C['FH'],
+                          title='Fleet C-CHECK FH',
+                          xlabel='Flight Hours',
+                          ylabel="#Checks")
+        self.analyse_list(metrics_checks_C['FC'],
+                          title='Fleet C-CHECK FC',
+                          xlabel='Flight Cycles',
+                          ylabel="#Checks")
+        self.analyse_list(metrics_checks_C['DY'],
+                          title='Fleet C-CHECK DY',
+                          xlabel='Calendar Days',
+                          ylabel="#Checks")
 
     def _process_task_calendar_metrics(self, task_calendar):
         print('INFO: processing metrics from the calendar of tasks ')
