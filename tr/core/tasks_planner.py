@@ -93,6 +93,10 @@ class TasksPlanner:
             task_calendar = self.solve_tasks()
             save_pickle(task_calendar, "task_calendar.pkl")
 
+        task_calendar = self.solve_tasks()
+        save_pickle(task_calendar, "task_calendar.pkl")
+
+
         # task_allocation_calendar = self.solve_man_hours(task_calendar)
         self.task_calendar_to_excel(task_calendar)
         import ipdb
@@ -210,11 +214,10 @@ class TasksPlanner:
         task_calendar = OrderedDict()
         processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
         for date in tqdm(self.final_calendar['A'].keys()):
-            # if datetime_to_integer(date) == 20190409:
-            #     import ipdb
-            #     ipdb.set_trace()
             day_state_A = self.final_calendar['A'][date]
             day_state_C = self.final_calendar['C'][date]
+            # import ipdb;
+            # ipdb.set_trace()
             task_calendar[date] = {}
             merged_A_with_C = []
 
@@ -235,34 +238,36 @@ class TasksPlanner:
 
             if day_state_A['MAINTENANCE']:
                 # do usual maintenance on all A-tasks
-                processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft = self.process_maintenance_day(
-                    processed_aircraft_tasks, aircraft_A, date, type_check='A-CHECK')
-                task_calendar[date]['A'] = {
-                    'aircraft': aircraft_A,
-                    'tasks_per_aircraft': tasks_per_aircraft,
-                    'ratios_per_aircraft': ratios_executed_per_aircraft
-                }
+                if len(aircraft_A) !=0:
+                    processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft, tasks_expected_due_dates_per_aircraft = self.process_maintenance_day(
+                        processed_aircraft_tasks, aircraft_A, date, type_check='A-CHECK')
+                    task_calendar[date]['A'] = {
+                        'aircraft': aircraft_A,
+                        'tasks_per_aircraft': tasks_per_aircraft,
+                        'ratios_per_aircraft': ratios_executed_per_aircraft,
+                        'tasks_expected_due_dates_per_aircraft': tasks_expected_due_dates_per_aircraft
+                    }
 
             if day_state_C['MAINTENANCE']:
                 # do usual maintenance on all tasks
                 if len(aircraft_C) != 0:
-                    processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft = self.process_maintenance_day(
+                    processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft, tasks_expected_due_dates_per_aircraft = self.process_maintenance_day(
                         processed_aircraft_tasks, aircraft_C, date, type_check='C-CHECK')
                     task_calendar[date]['C'] = {
                         'aircraft': aircraft_C,
                         'tasks_per_aircraft': tasks_per_aircraft,
-                        'ratios_per_aircraft': ratios_executed_per_aircraft
+                        'ratios_per_aircraft': ratios_executed_per_aircraft,
+                        'tasks_expected_due_dates_per_aircraft': tasks_expected_due_dates_per_aircraft
                     }
                 if len(merged_A_with_C) != 0:
-                    processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft = self.process_maintenance_day(
+                    processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft, tasks_expected_due_dates_per_aircraft = self.process_maintenance_day(
                         processed_aircraft_tasks, merged_A_with_C, date, type_check='ALL')
                     task_calendar[date]['C MERGED WITH A'] = {
                         'aircraft': merged_A_with_C,
                         'tasks_per_aircraft': tasks_per_aircraft,
-                        'ratios_per_aircraft': ratios_executed_per_aircraft
+                        'ratios_per_aircraft': ratios_executed_per_aircraft,
+                        'tasks_expected_due_dates_per_aircraft': tasks_expected_due_dates_per_aircraft
                     }
-                # import ipdb
-                # ipdb.set_trace()
 
         return task_calendar
 
@@ -274,6 +279,7 @@ class TasksPlanner:
                                 type_check='A-CHECK'):
         tasks_per_aircraft = OrderedDict()
         ratios_executed_per_aircraft = OrderedDict()
+        tasks_expected_due_dates_per_aircraft = OrderedDict()
 
         for ac in aircraft:
             df_ac = processed_aircraft_tasks[ac]['df_aircraft_shaved_tasks']
@@ -336,6 +342,7 @@ class TasksPlanner:
 
             tasks_executed = []
             ratios_executed = []
+            tasks_expected_due_dates = []
             for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
                 expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][task_number]
                 try:
@@ -358,10 +365,12 @@ class TasksPlanner:
                         if previous_check <= expected_due_date <= next_check_a:
                             tasks_executed.append((task_number, previous_check))
                             ratios_executed.append((task_number, ratio_exec))
+                            tasks_expected_due_dates.append((task_number, expected_due_date))
                     elif block == 'C-CHECK':
                         if previous_check <= expected_due_date <= next_check_c:
                             tasks_executed.append((task_number, previous_check))
                             ratios_executed.append((task_number, ratio_exec))
+                            tasks_expected_due_dates.append((task_number, expected_due_date))
 
                 ############################################################################
                 elif type_check == block:
@@ -370,12 +379,16 @@ class TasksPlanner:
                     if previous_check <= expected_due_date <= next_check:
                         tasks_executed.append((task_number, previous_check))
                         ratios_executed.append((task_number, ratio_exec))
+                        tasks_expected_due_dates.append((task_number, expected_due_date))
+
 
             tasks_per_aircraft[ac] = dict(tasks_executed)
             ratios_executed_per_aircraft[ac] = dict(ratios_executed)
+            tasks_expected_due_dates_per_aircraft[ac] = dict(tasks_expected_due_dates)
+            assert len(tasks_expected_due_dates_per_aircraft[ac]) == len(tasks_per_aircraft[ac])
             processed_aircraft_tasks = self.reschedule_tasks(processed_aircraft_tasks, ac,
                                                              tasks_per_aircraft[ac])
-        return processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft
+        return processed_aircraft_tasks, tasks_per_aircraft, ratios_executed_per_aircraft, tasks_expected_due_dates_per_aircraft
 
     # this expected due date already has in account the.... min of fh blablabla in either
     # computed or rescheduled stuff
