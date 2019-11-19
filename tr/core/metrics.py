@@ -30,11 +30,20 @@ def plot_MRI_distrib(aircraft,
         min_max_dates[task] = delta_days
     work_package_tasks = sorted(min_max_dates, key=min_max_dates.get)
     work_package_delta_dates = [min_max_dates[task] for task in work_package_tasks]
+
+    #min
     work_package_task_min = min(min_max_dates, key=min_max_dates.get)
     work_package_due_date = min_max_dates[work_package_task_min]
     work_task_min_date = calendar_check['tasks_expected_due_dates_per_aircraft'][aircraft][
         work_package_task_min]
     work_task_min_date = integer_to_datetime(int(work_task_min_date))
+
+    #max
+    work_package_task_max = max(min_max_dates, key=min_max_dates.get)
+    work_package_due_date_max = min_max_dates[work_package_task_max]
+    work_task_max_date = calendar_check['tasks_expected_due_dates_per_aircraft'][aircraft][
+        work_package_task_max]
+    work_task_max_date = integer_to_datetime(int(work_task_max_date))
 
     histogram_check_date = [baseline_days_before_check for x in work_package_delta_dates]
     histogram_work_package_due_date = [
@@ -91,41 +100,63 @@ def plot_MRI_distrib(aircraft,
                                                                     check_date.date()))
     plt.xticks(r, names, fontweight='bold')
     plt.ylabel("Number of days from check execution")
-    plt.xlabel("MRI anonymized codes")
+    plt.xlabel("MRI Clusters anonymized codes")
 
     for i, v in enumerate(histogram_work_package_expected_date):
         plt.text(i - 0.05, v, str(v), color='blue', fontweight='bold')
     ###### Execution date
-    plt.text(-6,
-             0,
+    plt.text(2,
+             work_package_due_date_max - 3,
              "{}-check date {}".format(check_type, check_date.date()),
              color='#19CB06',
              fontweight='bold')
 
     ###### Workpackage due-date
-    plt.text(-6,
-             work_package_due_date,
-             "{}-check date {}".format(check_type, check_date.date()),
-             color='#19CB06',
+    plt.text(2,
+             work_package_due_date_max - 1.5,
+             "WP due date {}".format(work_task_min_date.date()),
+             color='#CCCC00',
+             fontweight='bold')
+
+    ###### Workpackage due-date
+    plt.text(2,
+             work_package_due_date_max,
+             "Task due date {}".format(work_task_max_date.date()),
+             color='#FF8000',
              fontweight='bold')
 
     # Show graphic
-    plt.show()
-
-    # import ipdb
-    # ipdb.set_trace()
+    # plt.show()
+    return work_package_delta_dates
 
 
 def plot_MRI_distrib_per_aircraft(aircraft, check='A'):
+    all_delta_dates_mris = []
     for check_date in final_fleet_schedule[check][aircraft].keys():
         calendar_check = task_calendar[check_date][check]
         assert aircraft in calendar_check['aircraft']
-        plot_MRI_distrib(aircraft, calendar_check, check_date, check_type=check)
+        work_package_delta_dates = plot_MRI_distrib(aircraft,
+                                                    calendar_check,
+                                                    check_date,
+                                                    check_type=check)
+        all_delta_dates_mris.extend(work_package_delta_dates)
+    all_delta_dates_mris = [x for x in all_delta_dates_mris if x < 60]
+    plt.clf()
+    plt.cla()
+    plt.close()
+    plt.title("MRI clusters vs days past all {}-checks executions for {}".format(check, aircraft))
+    plt.ylabel("Number of MRI clusters of tasks")
+    plt.xlabel("MRI clusters number of days to due-date")
+    plt.hist(all_delta_dates_mris, 50)
+    plt.show()
+    import ipdb
+    ipdb.set_trace()
 
 
 plot_MRI_distrib_per_aircraft('Aircraft-1', check='A')
-import ipdb
-ipdb.set_trace()
+plot_MRI_distrib_per_aircraft('Aircraft-2', check='A')
+plot_MRI_distrib_per_aircraft('Aircraft-3', check='A')
+plot_MRI_distrib_per_aircraft('Aircraft-4', check='A')
 
 type_checks = ['A', 'C', 'C MERGED WITH A']
 
