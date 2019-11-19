@@ -1,14 +1,131 @@
 import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
+import matplotlib.pyplot as plt
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 from tr.core.tasks_planner import datetime_to_integer, integer_to_datetime
 
 try:
+    final_fleet_schedule = {}
     task_calendar = load_pickle("task_calendar.pkl")
+    processed_aircraft_tasks = load_pickle("processed_aircraft_tasks.pkl")
+    final_fleet_schedule['A'] = load_pickle("final_schedule_A.pkl")
+    final_fleet_schedule['C'] = load_pickle("final_schedule_C.pkl")
 except:
     raise "Tasks calendar file not found"
+
+
+def plot_MRI_distrib(aircraft,
+                     calendar_check,
+                     check_date,
+                     baseline_days_before_check=0,
+                     baseline_days_bar_bottom=-5,
+                     check_type='A'):
+    min_max_dates = {}
+    for task in calendar_check['tasks_expected_due_dates_per_aircraft'][aircraft].keys():
+        task_date = calendar_check['tasks_expected_due_dates_per_aircraft'][aircraft][task]
+        task_date = integer_to_datetime(int(task_date))
+        delta_days = (task_date - check_date).days
+        min_max_dates[task] = delta_days
+    work_package_tasks = sorted(min_max_dates, key=min_max_dates.get)
+    work_package_delta_dates = [min_max_dates[task] for task in work_package_tasks]
+    work_package_task_min = min(min_max_dates, key=min_max_dates.get)
+    work_package_due_date = min_max_dates[work_package_task_min]
+    work_task_min_date = calendar_check['tasks_expected_due_dates_per_aircraft'][aircraft][
+        work_package_task_min]
+    work_task_min_date = integer_to_datetime(int(work_task_min_date))
+
+    histogram_check_date = [baseline_days_before_check for x in work_package_delta_dates]
+    histogram_work_package_due_date = [
+        baseline_days_before_check + work_package_due_date for x in work_package_delta_dates
+    ]
+    histogram_work_package_expected_date = [
+        baseline_days_before_check + x for x in work_package_delta_dates
+    ]
+
+    bars1_stacked = histogram_check_date
+    bars2_stacked = [
+        histogram_work_package_due_date[i] - histogram_check_date[i]
+        for i in range(len(histogram_check_date))
+    ]
+    bars3_stacked = [
+        histogram_work_package_expected_date[i] - histogram_work_package_due_date[i]
+        for i in range(len(histogram_check_date))
+    ]
+
+    # counts, bins = np.histogram(list(min_max_dates.values()))
+    bars3_bottom = np.add(bars1_stacked, bars2_stacked).tolist()
+    baseline_days_bar_bottom = [baseline_days_bar_bottom for i in range(len(work_package_tasks))]
+    # The position of the bars on the x-axis
+    r = range(len(work_package_tasks))
+
+    # Names of group and bar width
+    names = work_package_tasks
+    barWidth = 1
+
+    # Create brown bars
+    plt.bar(r,
+            baseline_days_bar_bottom,
+            bottom=bars1_stacked,
+            color='#19CB06',
+            edgecolor='white',
+            width=barWidth)
+    # Create green bars (middle), on top of the firs ones
+    plt.bar(r,
+            bars2_stacked,
+            bottom=bars1_stacked,
+            color='#CCCC00',
+            edgecolor='white',
+            width=barWidth)
+    # Create green bars (top)
+    a2 = plt.bar(r,
+                 bars3_stacked,
+                 bottom=bars3_bottom,
+                 color='#FF8000',
+                 edgecolor='white',
+                 width=barWidth)
+
+    # Custom X axis
+    plt.title("{} due-dates per MRI on {}-check, on date {}".format(aircraft, check_type,
+                                                                    check_date.date()))
+    plt.xticks(r, names, fontweight='bold')
+    plt.ylabel("Number of days from check execution")
+    plt.xlabel("MRI anonymized codes")
+
+    for i, v in enumerate(histogram_work_package_expected_date):
+        plt.text(i - 0.05, v, str(v), color='blue', fontweight='bold')
+    ###### Execution date
+    plt.text(-6,
+             0,
+             "{}-check date {}".format(check_type, check_date.date()),
+             color='#19CB06',
+             fontweight='bold')
+
+    ###### Workpackage due-date
+    plt.text(-6,
+             work_package_due_date,
+             "{}-check date {}".format(check_type, check_date.date()),
+             color='#19CB06',
+             fontweight='bold')
+
+    # Show graphic
+    plt.show()
+
+    # import ipdb
+    # ipdb.set_trace()
+
+
+def plot_MRI_distrib_per_aircraft(aircraft, check='A'):
+    for check_date in final_fleet_schedule[check][aircraft].keys():
+        calendar_check = task_calendar[check_date][check]
+        assert aircraft in calendar_check['aircraft']
+        plot_MRI_distrib(aircraft, calendar_check, check_date, check_type=check)
+
+
+plot_MRI_distrib_per_aircraft('Aircraft-1', check='A')
+import ipdb
+ipdb.set_trace()
 
 type_checks = ['A', 'C', 'C MERGED WITH A']
 
