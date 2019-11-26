@@ -1,0 +1,10 @@
+install:
+
+process:
+  A-Checks: True
+  C-Checks: True
+  Tasks: True
+  silent-mode: False
+parameters:
+  C-Checks:
+  A-Checks:

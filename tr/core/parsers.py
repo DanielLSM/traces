@@ -288,8 +288,6 @@ def book_to_kwargs_tasks(book):
 
         #Now dropping the rows without due dates
         df_aircraft = df_aircraft.drop(df_aircraft.index[index_labels])
-        # import ipdb
-        # ipdb.set_trace()
         return df_aircraft, tasks_no_date, index_labels, amount_remove
 
     aircraft_clustered_tasks = OrderedDict()
@@ -339,10 +337,6 @@ def book_to_kwargs_tasks(book):
             man_hours_time = aircraft_tasks[aircraft][item][line_idx]['Mxh EST.']
             aircraft_tasks[aircraft][item][line_idx]['SKILL'] = {}
             aircraft_tasks[aircraft][item][line_idx]['SKILL'][main_skill] = man_hours_time
-
-            # if item == '323100-02-1':
-            #   import ipdb
-            #   ipdb.set_trace()
 
             if a_check_boolean:
                 if aircraft_tasks[aircraft][item][line_idx]['TASK BY BLOCK'] == 'C-CHECK':
@@ -431,8 +425,6 @@ def test_task_parity(aircraft_clustered_tasks):
         'MAP': 11,
         'NDT': 12
     }
-    import ipdb
-    ipdb.set_trace()
     for _ in aircraft_clustered_tasks[aircraft].keys():
         for skill in aircraft_clustered_tasks[aircraft][_]['SKILL'].keys():
             try:
@@ -445,8 +437,6 @@ def test_task_parity(aircraft_clustered_tasks):
         ctx += 1
 
     print("INFO: Parity of tasks checked")
-    import ipdb
-    ipdb.set_trace()
     return True
 
 
@@ -469,8 +459,6 @@ def book_to_kwargs_output(book_output):
         assert c_check_code not in c_checks[aircraft].keys()
         c_checks[aircraft][c_check_code] = days
         c_checks_days[aircraft].extend(days)
-        # import ipdb
-        # ipdb.set_trace()
     return {'c-checks': c_checks, 'c-checks-days': c_checks_days}
 
 

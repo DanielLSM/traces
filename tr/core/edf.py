@@ -695,7 +695,7 @@ if __name__ == '__main__':
     try:
         book_checks = excel_to_book(f1_in_checks)
         book_tasks, book_output = 0, 0
-        # book_tasks = excel_to_book(f1_in_tasks)
+        book_tasks = excel_to_book(f1_in_tasks)
         # book_output = excel_to_book(f2_out)
     except Exception as e:
         raise e
