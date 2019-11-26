@@ -2,9 +2,9 @@
     "python.pythonPath": "/home/daniel/anaconda3/envs/back/bin/python",
     "python.formatting.provider": "yapf",
     "python.linting.pylintEnabled": false,
-    "python.linting.pep8Enabled": true,
+    "python.linting.pycodestyleEnabled": true,
     "python.linting.enabled": true,
-    "python.linting.pep8Args": [
+    "python.linting.pycodestyleArgs": [
         "--ignore=E501"
     ]
 }

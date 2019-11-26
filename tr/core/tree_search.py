@@ -734,13 +734,9 @@ class TreeDaysPlanner:
         import ipdb
         ipdb.set_trace()
 
-    # TODO need to fix the C_elapsed_time
     def final_schedule_to_excel(self, final_schedule, type_check='C'):
-        # import ipdb
-        # ipdb.set_trace()
         print("INFO: Saving xlsx files")
         dict1 = OrderedDict()
-        # dict1['Fleet'] = []
         dict1['A/C ID'] = []
         dict1['START'] = []
         dict1['END'] = []
@@ -752,7 +748,6 @@ class TreeDaysPlanner:
         dict1['FC LOST'] = []
         for aircraft in final_schedule.keys():
             for _ in final_schedule[aircraft].keys():
-                # dict1['Fleet'].append(aircraft[0:4])
                 dict1['A/C ID'].append(aircraft)
                 dict1['START'].append(pd.to_datetime(_, format='%m/%d/%Y'))
                 if type_check == 'C':
