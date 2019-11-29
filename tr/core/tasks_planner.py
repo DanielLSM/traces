@@ -68,33 +68,33 @@ class TasksPlanner:
         try:
             self.final_calendar = {}
             self.final_fleet_schedule = {}
-            self.final_calendar['A'] = load_pickle("calendar_A.pkl")
-            self.final_calendar['C'] = load_pickle("calendar_C.pkl")
+            self.final_calendar['A'] = load_pickle("build/check_files/calendar_A.pkl")
+            self.final_calendar['C'] = load_pickle("build/check_files/calendar_C.pkl")
 
             # TODO you need to include the merged A to C checks, its kinda  important to know
             # which ones are merged lol
-            self.final_fleet_schedule['A'] = load_pickle("final_schedule_A.pkl")
-            self.final_fleet_schedule['C'] = load_pickle("final_schedule_C.pkl")
+            self.final_fleet_schedule['A'] = load_pickle("build/check_files/final_schedule_A.pkl")
+            self.final_fleet_schedule['C'] = load_pickle("build/check_files/final_schedule_C.pkl")
         except:
             import ipdb
             ipdb.set_trace()
 
         try:
-            self.processed_aircraft_tasks = load_pickle("processed_aircraft_tasks.pkl")
+            self.processed_aircraft_tasks = load_pickle("build/tasks_files/processed_aircraft_tasks.pkl")
         except:
             self.processed_aircraft_tasks = self._process_aircraft_tasks()
-            save_pickle(self.processed_aircraft_tasks, "processed_aircraft_tasks.pkl")
+            save_pickle(self.processed_aircraft_tasks, "build/tasks_files/processed_aircraft_tasks.pkl")
 
         # self.processed_aircraft_tasks = self._process_aircraft_tasks()
 
         try:
-            task_calendar = load_pickle("task_calendar.pkl")
+            task_calendar = load_pickle("build/output_files/task_calendar.pkl")
         except:
             task_calendar = self.solve_tasks()
-            save_pickle(task_calendar, "task_calendar.pkl")
+            save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
 
         task_calendar = self.solve_tasks()
-        save_pickle(task_calendar, "task_calendar.pkl")
+        save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
 
 
         # task_allocation_calendar = self.solve_man_hours(task_calendar)

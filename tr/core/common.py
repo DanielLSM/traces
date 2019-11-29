@@ -315,26 +315,6 @@ class FleetManagerBase:
             self.skills_ratios_C = kwargs['skills_ratios_C']
             self.man_hours = kwargs['man_hours']
             self.delivery_date = kwargs['delivery date']
-            save_pickle(self.aircraft_tasks, 'aircraft_tasks.pkl')
-            save_pickle(self.df_tasks, 'df_tasks.pkl')
-            save_pickle(self.df_aircraft_shaved, 'df_aircraft_shaved.pkl')
-            save_pickle(self.skills, 'skills.pkl')
-            save_pickle(self.skills_ratios_A, 'skills_ratios_A.pkl')
-            save_pickle(self.skills_ratios_C, 'skills_ratios_C.pkl')
-            save_pickle(self.man_hours, 'man_hours.pkl')
-            save_pickle(self.delivery_date, 'delivery_date.pkl')
-        else:
-            self.aircraft_tasks = load_pickle('aircraft_tasks.pkl')
-            self.df_aircraft_shaved = load_pickle('df_aircraft_shaved.pkl')
-            self.df_tasks = load_pickle('df_tasks.pkl')
-            self.skills = load_pickle('skills.pkl')
-            self.skills_ratios_A = load_pickle('skills_ratios_A.pkl')
-            self.skills_ratios_C = load_pickle('skills_ratios_C.pkl')
-            self.man_hours = load_pickle('man_hours.pkl')
-            self.delivery_date = load_pickle('delivery_date.pkl')
-
-        # self.kwargs_c_checks = kwargs['c-checks']
-        # self.kwargs_c_checks_days = kwargs['c-checks-days']
 
 
 if __name__ == '__main__':

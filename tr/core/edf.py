@@ -46,7 +46,11 @@ class SchedulerEDF(FleetManagerBase):
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         self.calendar.calendar[daterinos]['resources']['slots']['a-type'] += 1
 
-        # self.plan_by_days()
+        self.optimizer_checks = TreeDaysPlanner(self.calendar, self.fleet)
+
+        self.plan_by_days("C")
+        self.plan_by_days("A")
+
 
         # self.plan_maintenance_opportunities()
         # save_pickle(self.global_schedule, "checks.pkl")
@@ -60,11 +64,8 @@ class SchedulerEDF(FleetManagerBase):
         # self.save_checks_to_xlsx()
         # self.save_tasks_to_xlsx()
 
-    def plan_by_days(self):
-        calendar = self.calendar
-        fleet = self.fleet
-        self.optimizer = TreeDaysPlanner(calendar, fleet)
-        all_schedules = self.optimizer.solve_schedule()
+    def plan_by_days(self, check_type="C"):
+        self.optimizer_checks.solve_schedule(check_type)
 
     def _set_global_schedule(self):
         global_schedule = OrderedDict()
