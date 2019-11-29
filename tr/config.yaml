@@ -8,3 +8,4 @@ process:
 parameters:
   C-Checks:
   A-Checks:
+  Tasks:
