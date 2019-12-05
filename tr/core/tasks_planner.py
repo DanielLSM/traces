@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 
-from datetime import datetime
+
+from datetime import datetime, date
 from collections import OrderedDict
 from tqdm import tqdm
 
@@ -15,6 +16,13 @@ from tr.core.utils import advance_date, save_pickle, load_pickle
 
 
 def datetime_to_integer(dt_time):
+
+    #TODO: SOLVE FOR OLD DATA FIRST
+    if not isinstance(dt_time, pd.Timestamp) \
+        and not isinstance(dt_time, pd.DatetimeIndex) \
+            and not isinstance(dt_time, date):
+        return np.nan
+
     return 10000 * dt_time.year + 100 * dt_time.month + dt_time.day
 
 
@@ -40,7 +48,11 @@ def update(lastexecdate, Simulatedlifetime):
 
     COPY = deepcopy(Simulatedlifetime)
     ## Setting the array at 0 at these locations
-    FH = COPY[1, idx[0][0]]
+    try:
+        FH = COPY[1, idx[0][0]]
+    except:
+        import ipdb;
+        ipdb.set_trace()
     FC = COPY[2, idx[0][0]]
     Days = COPY[3, idx[0][0]]
     months = COPY[6, idx[0][0]]
@@ -676,9 +688,13 @@ class TasksPlanner:
             n_temporary_tasks = len(temporary_tasks['LAST EXEC DT'])
             last_executed = 0
             for i in range(n_temporary_tasks):
+
                 if type(temporary_tasks['LAST EXEC DT'][i]) == str:
-                    temp = datetime.strptime(temporary_tasks['LAST EXEC DT'][i], "%Y-%m-%d")
-                    temp = datetime_to_integer(temp.date())
+                    try:
+                        temp = datetime.strptime(temporary_tasks['LAST EXEC DT'][i], "%m/%d/%Y")
+                        temp = datetime_to_integer(temp.date())
+                    except Exception as e:
+                        raise(e)
                 else:
                     temp = datetime_to_integer(temporary_tasks['LAST EXEC DT'][i])
                 if temp > last_executed:
@@ -707,7 +723,11 @@ class TasksPlanner:
         dfh = self.aircraft_info[aircraft]['DFH']
         dfc = self.aircraft_info[aircraft]['DFC']
         index_ac = np.where(self.delivery['A/C TAIL'] == aircraft)[0][0]
-        delivery_date = self.delivery['DELIVERY DATE'][index_ac].date()
+        try:
+            delivery_date = self.delivery['DELIVERY DATE'][index_ac].date()
+        except:
+            delivery_date = pd.to_datetime(self.delivery['DELIVERY DATE'][index_ac], format='%m/%d/%Y').date()
+        
         end_date = integer_to_datetime(20690101)
         # end_date = advance_date(delivery_date, years=50)
         date_range = pd.date_range(delivery_date, end_date)

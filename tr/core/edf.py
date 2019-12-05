@@ -48,8 +48,8 @@ class SchedulerEDF(FleetManagerBase):
 
         self.optimizer_checks = TreeDaysPlanner(self.calendar, self.fleet)
 
-        self.plan_by_days("C")
-        self.plan_by_days("A")
+        # self.plan_by_days("C")
+        # self.plan_by_days("A")
 
 
         # self.plan_maintenance_opportunities()
@@ -608,6 +608,7 @@ class SchedulerEDF(FleetManagerBase):
             self.aircraft_tasks[aircraft]['a_checks_items'].remove(blacked)
 
     def plan_tasks_fleet(self):
+
 
         self.optimizer_tasks = TasksPlanner(self.aircraft_tasks, self.fleet.aircraft_info,
                                             self.df_tasks, self.skills, self.skills_ratios_A,
