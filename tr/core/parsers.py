@@ -167,6 +167,13 @@ def book_to_kwargs_tasks(book):
         # df['LAST EXEC FC'].fillna(False, inplace=True)
         # df['LAST EXEC FH'].fillna(False, inplace=True)
         # df['LAST EXEC DT'].fillna(False, inplace=True)
+
+        if not isinstance(df['LIMIT EXEC DT'][0], pd.Timestamp):
+            df['LIMIT EXEC DT'] = pd.to_datetime(df['LIMIT EXEC DT'], format='%m/%d/%Y')
+            df['LAST EXEC DT'] = pd.to_datetime(df['LAST EXEC DT'], format='%m/%d/%Y')
+            import ipdb
+            ipdb.set_trace()
+
         # df['PER CALEND'].fillna(0, inplace=True)
         df['TASK BY BLOCK'].fillna("C-CHECK", inplace=True)
         # do not use things without due dates
@@ -271,6 +278,14 @@ def book_to_kwargs_tasks(book):
         #and PER DAY (only in days!)
         df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(preprocessMonths).fillna(0)
         df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(preprocessDays).fillna(0)
+
+        if not isinstance(df_aircraft['LIMIT EXEC DT'][0], pd.Timestamp):
+            df_aircraft['LIMIT EXEC DT'] = pd.to_datetime(df_aircraft['LIMIT EXEC DT'],
+                                                          format='%m/%d/%Y')
+            df_aircraft['LAST EXEC DT'] = pd.to_datetime(df_aircraft['LAST EXEC DT'],
+                                                         format='%m/%d/%Y')
+            # import ipdb;
+            # ipdb.set_trace()
 
         ##Modification/expanding 3: new column with nr task added to dataset
         #Each of the tasks will be represented by a task nr starting from 0.
@@ -389,6 +404,15 @@ def book_to_kwargs_tasks(book):
                                     skillz] += skill_value
 
         # test_task_parity(aircraft_clustered_tasks)
+    #############################################################################################
+    #############################################################################################
+    # Finally process the delivery page and convert to timestamp if string
+    df_delivery = book['DELIVERY']
+    if not isinstance(df_delivery['DELIVERY DATE'][0], pd.Timestamp):
+        df_delivery['DELIVERY DATE'] = pd.to_datetime(df_delivery['DELIVERY DATE'],
+                                                      format='%m/%d/%Y')
+        # import ipdb
+        # ipdb.set_trace()
 
     print("INFO: information from runtime parsed with success")
     print("#########################")
@@ -401,7 +425,7 @@ def book_to_kwargs_tasks(book):
         'skills_ratios_A': skills_ratios_A,
         'skills_ratios_C': skills_ratios_C,
         'man_hours': man_hours_skills,
-        'delivery date': book['DELIVERY']
+        'delivery date': df_delivery
     }
 
 

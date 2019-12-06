@@ -48,11 +48,7 @@ def update(lastexecdate, Simulatedlifetime):
 
     COPY = deepcopy(Simulatedlifetime)
     ## Setting the array at 0 at these locations
-    try:
-        FH = COPY[1, idx[0][0]]
-    except:
-        import ipdb;
-        ipdb.set_trace()
+    FH = COPY[1, idx[0][0]]
     FC = COPY[2, idx[0][0]]
     Days = COPY[3, idx[0][0]]
     months = COPY[6, idx[0][0]]
@@ -512,20 +508,14 @@ class TasksPlanner:
             #option 1
             if i in DT_outlast:
                 last_exec_value = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                try:
-                    last_exec_value = last_exec_value.date()
-                except:
-                    last_exec_value = pd.to_datetime(last_exec_value, format='%m/%d/%Y').date()
+                last_exec_value = last_exec_value.date()
                 last_exec_value = datetime_to_integer(last_exec_value)
                 if last_exec_value > last_executed:
                     raise ValueError('This task should DT be below 2018-07-26')
                     continue
                 idx = np.where(simulated_lifetime[0, :] == last_exec_value)
                 temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                try:
-                    temp = temp.date()
-                except:
-                    temp = pd.to_datetime(temp, format='%m/%d/%Y').date()
+                temp = temp.date()
                 TaskHorizon = update(temp, simulated_lifetime)
                 TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
             elif (i in FH_outlast) or (i in FC_outlast):
@@ -697,8 +687,8 @@ class TasksPlanner:
 
                 if type(temporary_tasks['LAST EXEC DT'][i]) == str:
                     try:
-                        temp = datetime.strptime(temporary_tasks['LAST EXEC DT'][i], "%m/%d/%Y")
-                        temp = datetime_to_integer(temp.date())
+                        temp = temporary_tasks['LAST EXEC DT'][i].date()
+                        temp = datetime_to_integer(temp)
                     except Exception as e:
                         raise(e)
                 else:
@@ -729,10 +719,7 @@ class TasksPlanner:
         dfh = self.aircraft_info[aircraft]['DFH']
         dfc = self.aircraft_info[aircraft]['DFC']
         index_ac = np.where(self.delivery['A/C TAIL'] == aircraft)[0][0]
-        try:
-            delivery_date = self.delivery['DELIVERY DATE'][index_ac].date()
-        except:
-            delivery_date = pd.to_datetime(self.delivery['DELIVERY DATE'][index_ac], format='%m/%d/%Y').date()
+        delivery_date = self.delivery['DELIVERY DATE'][index_ac].date()
         
         end_date = integer_to_datetime(20690101)
         # end_date = advance_date(delivery_date, years=50)
