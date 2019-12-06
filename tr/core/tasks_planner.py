@@ -105,8 +105,8 @@ class TasksPlanner:
             task_calendar = self.solve_tasks()
             save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
 
-        task_calendar = self.solve_tasks()
-        save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
+        # task_calendar = self.solve_tasks()
+        # save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
 
 
         # task_allocation_calendar = self.solve_man_hours(task_calendar)
@@ -512,14 +512,20 @@ class TasksPlanner:
             #option 1
             if i in DT_outlast:
                 last_exec_value = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                last_exec_value = last_exec_value.date()
+                try:
+                    last_exec_value = last_exec_value.date()
+                except:
+                    last_exec_value = pd.to_datetime(last_exec_value, format='%m/%d/%Y').date()
                 last_exec_value = datetime_to_integer(last_exec_value)
                 if last_exec_value > last_executed:
                     raise ValueError('This task should DT be below 2018-07-26')
                     continue
                 idx = np.where(simulated_lifetime[0, :] == last_exec_value)
                 temp = df_aircraft_shaved_tasks['LAST EXEC DT'].iat[i]
-                temp = temp.date()
+                try:
+                    temp = temp.date()
+                except:
+                    temp = pd.to_datetime(temp, format='%m/%d/%Y').date()
                 TaskHorizon = update(temp, simulated_lifetime)
                 TaskHorizon = TaskHorizon[:, idx[0][0] + 1:]
             elif (i in FH_outlast) or (i in FC_outlast):
