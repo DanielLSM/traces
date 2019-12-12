@@ -144,8 +144,9 @@ class TasksPlanner:
             dict1['START'] = []
             dict1['END'] = []
             dict1['ITEM CLUSTER'] = []
-            dict1['REF AIRLINE'] = []
-            dict1['DESCRIPTION'] = []
+            if 'REF AIRLINE' in df_aircraft.keys():
+                dict1['REF AIRLINE'] = []
+                dict1['DESCRIPTION'] = []
             dict1['BLOCK'] = []
             dict1['SKILL'] = []
             dict1['TASK BY BLOCK'] = []
@@ -191,8 +192,9 @@ class TasksPlanner:
                     idx_from_task_number = np.where(df_aircraft['NR TASK'] == task)[0][0]
                     i = idx_from_task_number
                     item = df_aircraft['ITEM'].iat[i]
-                    ref_tap = df_aircraft['REF TAP'].iat[i]
-                    description = df_aircraft['DESCRIPTION'].iat[i]
+                    if 'REF AIRLINE' in df_aircraft.keys():
+                        ref_tap = df_aircraft['REF TAP'].iat[i]
+                        description = df_aircraft['DESCRIPTION'].iat[i]
                     skill = df_aircraft['SKILL'].iat[i]
                     block = df_aircraft['TASK BY BLOCK'].iat[i]
 
@@ -201,8 +203,9 @@ class TasksPlanner:
                     dict1['START'].append(start)
                     dict1['END'].append(end)
                     dict1['ITEM CLUSTER'].append(item)
-                    dict1['REF AIRLINE'].append(ref_tap)
-                    dict1['DESCRIPTION'].append(description)
+                    if 'REF AIRLINE' in df_aircraft.keys():
+                        dict1['REF AIRLINE'].append(ref_tap)
+                        dict1['DESCRIPTION'].append(description)
                     dict1['BLOCK'].append(block)
                     dict1['SKILL'].append(skill)
                     dict1['TASK BY BLOCK'].append(block)
