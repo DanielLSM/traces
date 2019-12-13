@@ -1,5 +1,4 @@
-# from calc import calc as real_calc
-import sys
+# old rest API
 import zerorpc
 from tr.core.edf import *
 

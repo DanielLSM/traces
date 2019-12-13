@@ -84,8 +84,7 @@ class TasksPlanner:
             self.final_fleet_schedule['A'] = load_pickle("build/check_files/final_schedule_A.pkl")
             self.final_fleet_schedule['C'] = load_pickle("build/check_files/final_schedule_C.pkl")
         except:
-            import ipdb
-            ipdb.set_trace()
+            raise "No check plannings found, please run checks first"
 
         try:
             self.processed_aircraft_tasks = load_pickle("build/tasks_files/processed_aircraft_tasks.pkl")
@@ -93,27 +92,18 @@ class TasksPlanner:
             self.processed_aircraft_tasks = self._process_aircraft_tasks()
             save_pickle(self.processed_aircraft_tasks, "build/tasks_files/processed_aircraft_tasks.pkl")
 
-        # self.processed_aircraft_tasks = self._process_aircraft_tasks()
-
         try:
-            task_calendar = load_pickle("build/output_files/task_calendar.pkl")
+            self.task_calendar = load_pickle("build/output_files/task_calendar.pkl")
         except:
-            task_calendar = self.solve_tasks()
+            self.task_calendar = self.solve_tasks()
             save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
 
-        # task_calendar = self.solve_tasks()
-        # save_pickle(task_calendar, "build/output_files/task_calendar.pkl")
+        print("INFO: Tasks planner finished with sucess")
 
+    def task_calendar_to_excel(self):
+        task_calendar = self.task_calendar
 
-        # task_allocation_calendar = self.solve_man_hours(task_calendar)
-        self.task_calendar_to_excel(task_calendar)
-        import ipdb
-        ipdb.set_trace()
-        print("INFO: Tasks planning finished with sucess")
-
-    def task_calendar_to_excel(self, task_calendar):
-
-        print("INFO: Saving xlsx files")
+        print("INFO: Saving tasks excel files")
         for ac in tqdm(self.processed_aircraft_tasks.keys()):
             processed_aircraft_tasks = self.processed_aircraft_tasks[ac]
             df_aircraft = processed_aircraft_tasks['df_aircraft_shaved_tasks']
@@ -150,8 +140,6 @@ class TasksPlanner:
             dict1['BLOCK'] = []
             dict1['SKILL'] = []
             dict1['TASK BY BLOCK'] = []
-            # import ipdb
-            # ipdb.set_trace()
 
             for check in full_merged_sorted.keys():
                 check_date = integer_to_datetime(check)
@@ -214,9 +202,7 @@ class TasksPlanner:
 
             len(df)
             df.to_excel('task_planning/tasks-{}.xlsx'.format(ac))
-
-        import ipdb
-        ipdb.set_trace()
+            print("INFO: Saving tasks excel files")
 
     def solve_man_hours(self, task_calendar):
         pass
@@ -227,8 +213,6 @@ class TasksPlanner:
         for date in tqdm(self.final_calendar['A'].keys()):
             day_state_A = self.final_calendar['A'][date]
             day_state_C = self.final_calendar['C'][date]
-            # import ipdb;
-            # ipdb.set_trace()
             task_calendar[date] = {}
             merged_A_with_C = []
 
@@ -796,45 +780,3 @@ class TaskBin:
     @staticmethod
     def order_bins():
         pass
-
-    # def solve_tasks(self):
-    #     task_calendar = OrderedDict()
-    #     processed_aircraft_tasks = deepcopy(self.processed_aircraft_tasks)
-    #     import ipdb
-    #     ipdb.set_trace()
-    #     for a_check in tqdm(self.final_calendar['A'].keys()):
-    #         day_state = self.final_calendar['A'][a_check]
-    #         if day_state['MAINTENANCE'] and day_state['ASSIGNMENT']:
-    #             aircraft = day_state['ASSIGNMENT']
-    #             processed_aircraft_tasks, tasks_per_aircraft = self.process_maintenance_day(
-    #                 processed_aircraft_tasks, aircraft, a_check)
-    #             task_calendar[a_check] = {
-    #                 'check_day': a_check,
-    #                 'aircraft': aircraft,
-    #                 'tasks_per_aircraft': tasks_per_aircraft
-    #             }
-    #     return task_calendar
-
-    # def process_maintenance_day(self, processed_aircraft_tasks, aircraft, a_check):
-    #     tasks_per_aircraft = OrderedDict()
-    #     for ac in aircraft:
-    #         tasks_executed = []
-    #         idx_check = processed_aircraft_tasks[ac]['a_checks_dates'].index(a_check)
-    #         for task_number in processed_aircraft_tasks[ac]['expected_due_dates'].keys():
-    #             previous_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check]
-    #             previous_check = datetime_to_integer(previous_check)
-    #             if a_check != processed_aircraft_tasks[ac]['a_checks_dates'][-1]:
-    #                 next_check = processed_aircraft_tasks[ac]['a_checks_dates'][idx_check + 1]
-    #                 next_check = datetime_to_integer(next_check)
-    #                 expected_due_date = processed_aircraft_tasks[ac]['expected_due_dates'][
-    #                     task_number]
-    #                 try:
-    #                     if previous_check <= expected_due_date <= next_check:
-    #                         tasks_executed.append((task_number, previous_check))
-    #                 except:
-    #                     import ipdb
-    #                     ipdb.set_trace()
-    #         tasks_per_aircraft[ac] = dict(tasks_executed)
-    #         processed_aircraft_tasks = self.reschedule_tasks(processed_aircraft_tasks, ac,
-    #                                                          tasks_per_aircraft[ac])
-    #     return processed_aircraft_tasks, tasks_per_aircraft

@@ -260,5 +260,3 @@ for date in tqdm(hangar_C.keys()):
         full_distrib_A_merged_C_ratios[date] = False
         days_wasted_A_merged_C[date] = False
 
-import ipdb
-ipdb.set_trace()

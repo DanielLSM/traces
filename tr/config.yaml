@@ -1,11 +1,9 @@
-install:
-
 process:
-  A-Checks: True
-  C-Checks: True
-  Tasks: True
-  silent-mode: False
+  c-checks: False
+  a-checks: False
+  tasks: True
+  save_checks_to_excel: False
+  save_tasks_to_excel: False
 parameters:
-  C-Checks:
-  A-Checks:
-  Tasks:
+  c-checks:
+  a-checks:

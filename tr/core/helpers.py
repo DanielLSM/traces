@@ -24,6 +24,8 @@ def build_fast_exec_file():
         os.mkdir("build/check_files", 0o777)
         os.mkdir("build/tasks_files", 0o777)
         os.mkdir("build/output_files", 0o777)
+        os.mkdir("check_planning", 0o777)
+        os.mkdir("task_planning", 0o777)
     try:
         book_checks = excel_to_book(f1_in_checks)
         book_tasks = excel_to_book(f1_in_tasks)

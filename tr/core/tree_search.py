@@ -14,11 +14,11 @@ from tr.core.tree_utils import generate_D_check_code
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
-maintenance_actions = [1, 0]  # the order of this list reflects an heuristc btw
+maintenance_actions = [1, 0]  # the order of this list reflects an heuristc (do maintenance first)
 type_checks = ['A', 'C']  # type of checks
 
 import sys
-sys.setrecursionlimit(1500)  #all hope is lost....
+sys.setrecursionlimit(1500)  # recurssion limit is reached
 
 
 class TreeDaysPlanner:
@@ -160,24 +160,15 @@ class TreeDaysPlanner:
         day = advance_date(day, days=int(1))
         slots = self.get_slots(day, type_check)
 
-        # if self.calendar_tree['A'].depth() == 123:
-        #     import ipdb
-        #     ipdb.set_trace()
-
         iso_str = '5/2/2019'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         if day == daterinos:
-            # import ipdb
-            # ipdb.set_trace()
             slots += 1
 
         iso_str = '7/22/2019'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         if day == daterinos:
-            # import ipdb
-            # ipdb.set_trace()
             slots += 1
-
 
         on_maintenance = list(fleet_state_1.keys())[0]
         ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
@@ -196,12 +187,13 @@ class TreeDaysPlanner:
 
         for _ in self.phased_out.keys():
             if self.phased_out[_] == day:
+                print("{} phased out and is no longer in the fleet".format(_))
                 fleet_state_0.pop(_, None)
                 fleet_state_1.pop(_, None)
 
         on_c_maintenance_all = deepcopy(on_c_maintenance_0)
         for _ in on_c_maintenance_all:
-            print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
+            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
@@ -243,10 +235,9 @@ class TreeDaysPlanner:
                     'public holidays'] and self.calendar.calendar[day]['allowed']['a-type']:
 
                 on_maintenance = list(fleet_state_1.keys())[0:slots]
+                #if flight hours are bellow 550, and there are 2 slots, use only one
                 if slots == 2 and fleet_state_1[on_maintenance[-1]]['FH-A'] <= 550:
                     on_maintenance = [list(fleet_state_1.keys())[0]]
-                    import ipdb
-                    ipdb.set_trace()
 
                 for _ in on_maintenance_merged_0:
                     if _ in on_maintenance:
@@ -350,7 +341,7 @@ class TreeDaysPlanner:
 
         on_c_maintenance_all = deepcopy(on_c_maintenance_0)
         for _ in on_c_maintenance_all:
-            print("{}-{}".format(_, on_c_maintenance_tats_0[_]))
+            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
@@ -364,7 +355,6 @@ class TreeDaysPlanner:
             c_maintenance_counter -= 1
 
         for action_value in maintenance_actions:
-            # if type_check
             if action_value and self.calendar.calendar[day]['allowed'][
                     'public holidays'] and self.calendar.calendar[day]['allowed'][
                         'c-type'] and self.calendar.calendar[day]['allowed']['c_peak']:
@@ -484,10 +474,8 @@ class TreeDaysPlanner:
         if len(all_maintenance) > slots:
             return False, all_maintenance, all_maintenance_tats
         tat = self.tats[on_maintenance][new_code]
-        # se a next tat for -1, metes só phased out
         date = day
         real_tat = 0
-        # self.calendar
         while tat > 0:
             date = advance_date(date, days=int(1))
             if self.calendar.calendar[date]['allowed'][
@@ -517,7 +505,6 @@ class TreeDaysPlanner:
             self.calendar_tree[type_check][node_schedule.identifier].count += 1
             if self.calendar_tree[type_check][node_schedule.identifier].count > 1:
                 print("BACKTRACKKKKKKKK")
-
             # print("Child is {}, parent is {}".format(child, node_schedule))
             try:
                 self.calendar_tree[type_check].add_node(child, node_schedule)
@@ -525,10 +512,7 @@ class TreeDaysPlanner:
                 import ipdb
                 ipdb.set_trace()
                 print(e)
-            print("Depth:{}".format(self.calendar_tree[type_check].depth()))
-            # if self.calendar_tree[type_check].depth() == 950:
-            #     global maintenance_actions
-            #     maintenance_actions = [0, 1]
+            print("Depth: day {}".format(self.calendar_tree[type_check].depth()))
 
             next_node = self.solve(child, type_check=type_check, limit=limit - 1)
             if next_node == "cutoff":
@@ -542,23 +526,23 @@ class TreeDaysPlanner:
         root = self.calendar_tree[type_check].get_node(root_id)
         result = self.solve(root, type_check=type_check)
         final_schedule = self.calendar_to_schedule(result, type_check)
-        metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
+        # metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
         self.final_calendar[type_check] = result.calendar
         # self.final_schedule[type_check] = final_schedule
         save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
         if type_check == 'C':
             self.phased_out = result.phased_out
-        import ipdb
         save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
         save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
         save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
-        ipdb.set_trace()
         # result = self.solve(root, type_check='A')
         # score = self.calendar_score(result, type_check=type_check)
         # self.calendar_tree[type_check].show(nid=result.identifier)
         # A optmized: (13261, 9134.300000000052, 103953.90000000001)
         # A non-optimized: (55577, 254913.6, 365113.99999999936)
-        return result
+        del result
+        print("INFO: {}-checks planned for the full time horizon".format(type_check))
+        # return result
 
     def calendar_to_schedule(self, node_schedule, type_check='A'):
         calendar = deepcopy(node_schedule.calendar)
@@ -632,7 +616,7 @@ class TreeDaysPlanner:
         ipdb.set_trace()
 
     def final_schedule_to_excel(self, final_schedule, type_check='C'):
-        print("INFO: Saving xlsx files")
+        print("INFO: Saving {} schedule".format(type_check))
         dict1 = OrderedDict()
         dict1['A/C ID'] = []
         dict1['START'] = []
@@ -680,5 +664,6 @@ class TreeDaysPlanner:
         df = pd.DataFrame(dict1, columns=dict1.keys())
 
         print(df)
-        df.to_excel('{}-checks.xlsx'.format(type_check))
+        df.to_excel('check_planning/{}-checks.xlsx'.format(type_check))
+        print("INFO: Saved {} schedule".format(type_check))
         return dict1

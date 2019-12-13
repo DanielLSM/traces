@@ -27,7 +27,6 @@ parser.add_argument("-cf",
                     help="configuration file",
                     default="../config.yaml",
                     type=str)
-parser.add_argument("-st", "--silent", help="enables silent mode", default=False, type=bool)
 parser.add_argument("-pc",
                     "--pre_compute",
                     help="pre computes files for faster runs",
@@ -49,5 +48,29 @@ if args.run:
     config_file = read_yaml(args.config)
     kwargs = load_pickle("build/input_files/fast_exec.pkl")
     scheduler = SchedulerEDF(**kwargs)
-    import ipdb
-    ipdb.set_trace()
+
+    # import ipdb
+    # ipdb.set_trace()
+    if config_file['process']['c-checks']:
+        scheduler.plan_by_days("C")
+
+    if config_file['process']['a-checks']:
+        scheduler.plan_by_days("A")
+
+    if config_file['process']['tasks']:
+        scheduler.plan_tasks_fleet()
+
+    if config_file['process']['save_checks_to_excel']:
+        try:
+            final_schedule_a = load_pickle("build/check_files/final_schedule_A.pkl")
+            final_schedule_c = load_pickle("build/check_files/final_schedule_C.pkl")
+            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_a, type_check="A")
+            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_c, type_check="C")
+        except:
+            raise "Process checks first before saving!"
+
+    if config_file['process']['save_tasks_to_excel']:
+        try:
+            scheduler.optimizer_tasks.task_calendar_to_excel()
+        except:
+            raise "Process tasks first before saving!"

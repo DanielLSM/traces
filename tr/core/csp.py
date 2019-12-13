@@ -1,3 +1,4 @@
+# part of old API of solving the problem as a CSP
 import random
 from copy import deepcopy
 

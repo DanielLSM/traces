@@ -1,3 +1,4 @@
+#OLD CSP implementation
 # Welcome to the first tree-search implementation for CSP's on the internet
 from tr.core.csp import CSPSchedule, Variable, Constraint, Schedule
 import treelib
@@ -38,10 +39,8 @@ class NodeSchedule(treelib.Node):
 
     def expand_with_heuristic(self, csp, node_schedule, action_var):
         childs = []
-        for action_value in csp.select_next_values(node_schedule.assignment,
-                                                   action_var):
-            child = self.child_node(csp, node_schedule, action_var,
-                                    action_value)
+        for action_value in csp.select_next_values(node_schedule.assignment, action_var):
+            child = self.child_node(csp, node_schedule, action_var, action_value)
             if child != None and len(childs) == 0:
                 childs.append(child)
             elif child != None and child.tag != childs[-1].tag:
@@ -53,8 +52,7 @@ class NodeSchedule(treelib.Node):
         return childs
 
     def child_node(self, csp, node_schedule, action_var, action_value):
-        next_assignment = csp.do_next_assignment(node_schedule.assignment,
-                                                 action_var, action_value)
+        next_assignment = csp.do_next_assignment(node_schedule.assignment, action_var, action_value)
         if next_assignment != None:
             return NodeSchedule(next_assignment,
                                 action_var=action_var,
