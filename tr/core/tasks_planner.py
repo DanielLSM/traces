@@ -281,6 +281,7 @@ class TasksPlanner:
                         'tasks_expected_due_dates_per_aircraft': tasks_expected_due_dates_per_aircraft
                     }
 
+        self.task_calendar = task_calendar
         return task_calendar
 
     # lets solve the inventorization first

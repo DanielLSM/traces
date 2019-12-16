@@ -25,7 +25,7 @@ parser.add_argument("-v", "--version", help="show program version")
 parser.add_argument("-cf",
                     "--config",
                     help="configuration file",
-                    default="../config.yaml",
+                    default="../../config.yaml",
                     type=str)
 parser.add_argument("-pc",
                     "--pre_compute",
