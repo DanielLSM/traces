@@ -32,21 +32,28 @@ checks = {
 class SchedulerEDF(FleetManagerBase):
     """ Currently for A/C-Checks only, nodes are partial schedules and, 
     tree as total schedules """
+
     def __init__(self, *args, **kwargs):
         FleetManagerBase.__init__(self, **kwargs)
 
         iso_str = '01/10/2020'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+
         self.calendar.calendar[daterinos]['resources']['slots']['a-type'] += 1
 
-        self.optimizer_checks = TreeDaysPlanner(self.calendar, self.fleet)
-        self.optimizer_tasks = TasksPlanner(self.aircraft_tasks, self.fleet.aircraft_info,
-                                            self.df_tasks, self.skills, self.skills_ratios_A,
-                                            self.skills_ratios_C, self.man_hours,
-                                            self.delivery_date, self.df_aircraft_shaved)
+        self.config_params = kwargs['config_params']
+
+        self.optimizer_checks = TreeDaysPlanner(
+            self.calendar, self.fleet, self.config_params)
 
     def plan_by_days(self, check_type="C"):
         self.optimizer_checks.solve_schedule(check_type)
 
     def plan_tasks_fleet(self):
-        self.optimizer_tasks.solve_tasks()
+        if not hasattr(self, 'optimizer_tasks'):
+            self.optimizer_tasks = TasksPlanner(self.aircraft_tasks, self.fleet.aircraft_info,
+                                                self.df_tasks, self.skills, self.skills_ratios_A,
+                                                self.skills_ratios_C, self.man_hours,
+                                                self.delivery_date, self.df_aircraft_shaved)
+        task_calendar = self.optimizer_tasks.solve_tasks()
+        save_pickle(task_calendar, "build/output_files/task_calendar.pkl")

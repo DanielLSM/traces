@@ -47,10 +47,9 @@ if args.pre_compute:
 if args.run:
     config_file = read_yaml(args.config)
     kwargs = load_pickle("build/input_files/fast_exec.pkl")
+    kwargs.update({"config_params": config_file["parameters"]})
     scheduler = SchedulerEDF(**kwargs)
 
-    # import ipdb
-    # ipdb.set_trace()
     if config_file['process']['c-checks']:
         scheduler.plan_by_days("C")
 
@@ -62,10 +61,14 @@ if args.run:
 
     if config_file['process']['save_checks_to_excel']:
         try:
-            final_schedule_a = load_pickle("build/check_files/final_schedule_A.pkl")
-            final_schedule_c = load_pickle("build/check_files/final_schedule_C.pkl")
-            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_a, type_check="A")
-            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_c, type_check="C")
+            final_schedule_a = load_pickle(
+                "build/check_files/final_schedule_A.pkl")
+            final_schedule_c = load_pickle(
+                "build/check_files/final_schedule_C.pkl")
+            scheduler.optimizer_checks.final_schedule_to_excel(
+                final_schedule_a, type_check="A")
+            scheduler.optimizer_checks.final_schedule_to_excel(
+                final_schedule_c, type_check="C")
         except:
             raise "Process checks first before saving!"
 
@@ -74,3 +77,5 @@ if args.run:
             scheduler.optimizer_tasks.task_calendar_to_excel()
         except:
             raise "Process tasks first before saving!"
+
+    print("INFO: processing complete according to config file")

@@ -15,7 +15,8 @@ from collections import OrderedDict, defaultdict
 def excel_to_book(file_input: str):
     print("INFO: parsing xlsx to runtime book")
     try:
-        book = pd.read_excel(file_input, sheet_name=None)  # returns an ordered dict
+        # returns an ordered dict
+        book = pd.read_excel(file_input, sheet_name=None)
     except Exception as e:
         print(e)
         print('Error parsing the excel file into a dict book buddy!')
@@ -169,11 +170,11 @@ def book_to_kwargs_tasks(book):
         # df['LAST EXEC DT'].fillna(False, inplace=True)
 
         if not isinstance(df['LIMIT EXEC DT'][0], pd.Timestamp):
-            df['LIMIT EXEC DT'] = pd.to_datetime(df['LIMIT EXEC DT'], format='%m/%d/%Y')
-            df['LAST EXEC DT'] = pd.to_datetime(df['LAST EXEC DT'], format='%m/%d/%Y')
-            import ipdb
-            ipdb.set_trace()
-
+            df['LIMIT EXEC DT'] = pd.to_datetime(
+                df['LIMIT EXEC DT'], format='%m/%d/%Y')
+            df['LAST EXEC DT'] = pd.to_datetime(
+                df['LAST EXEC DT'], format='%m/%d/%Y')
+            print("INFO: using anonymized data")
         # df['PER CALEND'].fillna(0, inplace=True)
         df['TASK BY BLOCK'].fillna("C-CHECK", inplace=True)
         # do not use things without due dates
@@ -229,7 +230,7 @@ def book_to_kwargs_tasks(book):
         df_personnel = book['NUMBER_OF_TECHNICIANS']
         weekdays = df_personnel['Weekday'].unique()
         man_personnel = OrderedDict()
-        #0=Monday, 1=Tuesday, this is nice for.. .weekday()
+        # 0=Monday, 1=Tuesday, this is nice for.. .weekday()
         ctx = 0
         for weekday in weekdays:
             man_personnel[ctx] = OrderedDict()
@@ -244,7 +245,7 @@ def book_to_kwargs_tasks(book):
     def get_man_hours(man_personnel):
 
         effective_hours = 4
-        h_ndt = 7  #'HM-NDT'
+        h_ndt = 7  # 'HM-NDT'
         l_ndt = 7
         for week_day in man_personnel.keys():
             man_personnel[week_day]['HM-NDT'] = h_ndt
@@ -259,25 +260,27 @@ def book_to_kwargs_tasks(book):
     man_hours_skills = OrderedDict()
 
     def shred_tasks(df_aircraft):
-        ##### Preprocess data
-        #### Excel file 1 maintenance tasks
+        # Preprocess data
+        # Excel file 1 maintenance tasks
 
-        ###1. Modification/expanding dataset section
+        # 1. Modification/expanding dataset section
 
-        ##Modification/expanding 1: nan values to zero
-        #Replace nan values with zero in the PER FH and PER FC columns
+        # Modification/expanding 1: nan values to zero
+        # Replace nan values with zero in the PER FH and PER FC columns
         df_aircraft["PER FH"] = df_aircraft["PER FH"].fillna(0)
         df_aircraft["PER FC"] = df_aircraft["PER FC"].fillna(0)
         df_aircraft["PER CALEND"] = df_aircraft["PER CALEND"].fillna(0)
         # df_aircraft["TASK BY BLOCK"] = df_aircraft["TASK BY BLOCK"].apply(
         #     preprocesstask).fillna(0)
 
-        ##Modification/expanding 2: new columns added for month and day
-        #The CAL column needs a special treatment. The years are transformed to months.
-        #Two new columns will be created: PER Month (only months and years (expressed in months))
-        #and PER DAY (only in days!)
-        df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(preprocessMonths).fillna(0)
-        df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(preprocessDays).fillna(0)
+        # Modification/expanding 2: new columns added for month and day
+        # The CAL column needs a special treatment. The years are transformed to months.
+        # Two new columns will be created: PER Month (only months and years (expressed in months))
+        # and PER DAY (only in days!)
+        df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(
+            preprocessMonths).fillna(0)
+        df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(
+            preprocessDays).fillna(0)
 
         if not isinstance(df_aircraft['LIMIT EXEC DT'][0], pd.Timestamp):
             df_aircraft['LIMIT EXEC DT'] = pd.to_datetime(df_aircraft['LIMIT EXEC DT'],
@@ -287,13 +290,13 @@ def book_to_kwargs_tasks(book):
             # import ipdb;
             # ipdb.set_trace()
 
-        ##Modification/expanding 3: new column with nr task added to dataset
-        #Each of the tasks will be represented by a task nr starting from 0.
-        #This can be found in the column 'NR TASK'
+        # Modification/expanding 3: new column with nr task added to dataset
+        # Each of the tasks will be represented by a task nr starting from 0.
+        # This can be found in the column 'NR TASK'
         df_aircraft['NR TASK'] = range(len(df_aircraft))
 
-        ##Modification/expanding 4: Remove list that have no given limit in FH/FC/CALEND
-        #The tasks that have no PER FH, PER FC, PER CALEND will be removed from the tasks list.
+        # Modification/expanding 4: Remove list that have no given limit in FH/FC/CALEND
+        # The tasks that have no PER FH, PER FC, PER CALEND will be removed from the tasks list.
         tasks_no_date = np.where((df_aircraft['PER FH'] + df_aircraft['PER FC'] +
                                   df_aircraft['PER MONTH'] + df_aircraft['PER DAY']) == 0)
         amount_remove = np.count_nonzero(tasks_no_date)
@@ -301,7 +304,7 @@ def book_to_kwargs_tasks(book):
         for i in range(len(tasks_no_date[0])):
             index_labels.append(tasks_no_date[0][i])
 
-        #Now dropping the rows without due dates
+        # Now dropping the rows without due dates
         df_aircraft = df_aircraft.drop(df_aircraft.index[index_labels])
         return df_aircraft, tasks_no_date, index_labels, amount_remove
 
@@ -311,7 +314,8 @@ def book_to_kwargs_tasks(book):
         df_aircraft = df.copy(deep=True)
         df_aircraft = df_aircraft[df_aircraft['A/C'] == aircraft]
         df_aircraft = df_aircraft.reset_index(drop=True)
-        df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(df_aircraft)
+        df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(
+            df_aircraft)
         df_aircraft_shaved[aircraft] = df_aircraft
         aircraft_clustered_tasks[aircraft] = OrderedDict()
 
@@ -336,15 +340,16 @@ def book_to_kwargs_tasks(book):
 
             per_fc_boolean = per_fc if not per_fc else (per_fc < 5000)
             per_fh_boolean = per_fh if not per_fh else (per_fh < 7500)
-            per_months_boolean = per_months if not per_months else (per_months < 24)
+            per_months_boolean = per_months if not per_months else (
+                per_months < 24)
 
             # o gajo é um bocado canceroso, se já tiverem clustered deixa tar,
             # se forem individuais, corrige? XD
-            #condition for A-CHECK
+            # condition for A-CHECK
             a_check_boolean = ((per_block == "A-CHECK") or (per_fc_boolean) or (per_fh_boolean)
                                or (per_months_boolean))
 
-            #condition for C-CHECK
+            # condition for C-CHECK
             c_check_boolean = (per_block == "C-CHECK")
 
             main_skill = aircraft_tasks[aircraft][item][line_idx]['SKILL']
@@ -391,7 +396,8 @@ def book_to_kwargs_tasks(book):
                     aircraft_clustered_tasks[aircraft][item][task_attribute] = aircraft_tasks[
                         aircraft][item][nrs_tasks[0]][task_attribute]
 
-                    aircraft_clustered_tasks[aircraft][item]['SKILL'] = OrderedDict()
+                    aircraft_clustered_tasks[aircraft][item]['SKILL'] = OrderedDict(
+                    )
                     for taskz in nrs_tasks:
                         for skillz in aircraft_tasks[aircraft][item][taskz]['SKILL'].keys():
                             skill_value = aircraft_tasks[aircraft][item][taskz]['SKILL'][skillz]
@@ -411,8 +417,6 @@ def book_to_kwargs_tasks(book):
     if not isinstance(df_delivery['DELIVERY DATE'][0], pd.Timestamp):
         df_delivery['DELIVERY DATE'] = pd.to_datetime(df_delivery['DELIVERY DATE'],
                                                       format='%m/%d/%Y')
-        # import ipdb
-        # ipdb.set_trace()
 
     print("INFO: information from runtime parsed with success")
     print("#########################")
@@ -431,10 +435,10 @@ def book_to_kwargs_tasks(book):
 
 def test_task_parity(aircraft_clustered_tasks):
     #### SET 2: TASKS ####
-    #Consists of the following rows: 0 =  NR TASK, 1 = PER FH, 2 = PER FC, 3 = PER MONTH (months and years), 4 = PER DAY (only days),
+    # Consists of the following rows: 0 =  NR TASK, 1 = PER FH, 2 = PER FC, 3 = PER MONTH (months and years), 4 = PER DAY (only days),
     # 5 = Sum mxh GR1, 6 = Sum mxh GR2, 7 = Sum mxh GR4, 8 = Sum mxh ESHS, 9 = Sum mxh ICH, 10 = Sum mxh PINT, 11 = Sum mxh MAP,
     # 12 = Sum mxh NDT, 13 = Task possible on A-check opp (1 if yes, 0 otherwise), 14 = Task possible on C-check opp (1 = yes, 0 otherwise)
-    ##Call function to create set Tasks
+    # Call function to create set Tasks
 
     parity_tasks = load_pickle("tasks_max.pkl")
     aircraft = 'Aircraft-1'

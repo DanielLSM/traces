@@ -1,3 +1,4 @@
+import sys
 import treelib
 import pandas as pd
 
@@ -14,17 +15,19 @@ from tr.core.tree_utils import generate_D_check_code
 
 from tr.core.utils import advance_date, save_pickle, load_pickle
 
-maintenance_actions = [1, 0]  # the order of this list reflects an heuristc (do maintenance first)
+# the order of this list reflects an heuristc (do maintenance first)
+maintenance_actions = [1, 0]
 type_checks = ['A', 'C']  # type of checks
 
-import sys
 sys.setrecursionlimit(1500)  # recurssion limit is reached
 
 
 class TreeDaysPlanner:
-    def __init__(self, calendar, fleet):
+    def __init__(self, calendar, fleet, config_params):
         self.calendar = calendar
         self.fleet = fleet
+        self.cp = config_params
+
         self.calendar_tree = {'A': Tree(), 'C': Tree()}
         iso_str = '1/1/2022'
         self.daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
@@ -41,7 +44,6 @@ class TreeDaysPlanner:
             self.metrics(metrics_dict)
         except:
             pass
-
 
         self.utilization_ratio, self.code_generator, self.tats, self.finale_schedule = \
             self.__build_calendar_helpers()
@@ -65,7 +67,8 @@ class TreeDaysPlanner:
 
     def __build_calendar_helpers(self):
         fleet_state = build_fleet_state(self.fleet, type_check='C')
-        code_generator = {'A': partial(generate_code, 4), 'C': partial(generate_code, 12)}
+        code_generator = {'A': partial(
+            generate_code, 4), 'C': partial(generate_code, 12)}
         utilization_ratio = OrderedDict()
         tats = OrderedDict()
         finale_schedule = OrderedDict()
@@ -140,7 +143,7 @@ class TreeDaysPlanner:
         return childs
 
     def expand_a(self, node_schedule, type_check):
-        #recebe uma copia do calendario C para consultar
+        # recebe uma copia do calendario C para consultar
         # precisamos do mesmo que a outra a dizer merged
         calendar_0 = deepcopy(node_schedule.calendar)
         calendar_1 = deepcopy(node_schedule.calendar)
@@ -172,18 +175,37 @@ class TreeDaysPlanner:
 
         on_maintenance = list(fleet_state_1.keys())[0]
         ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
-        if self.calendar_tree['A'].depth() <= 239:
-            maintenance_actions = [1, 0] if ratio > 0.78 else [0, 1]
-        elif self.calendar_tree['A'].depth() <= 342:
-            maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
-        elif self.calendar_tree['A'].depth() <= 726:
-            maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
-        elif self.calendar_tree['A'].depth() <= 784:
-            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
-        elif self.calendar_tree['A'].depth() <= 926:
-            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        if self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_1']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_1'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_2']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_2'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_3']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_3'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_4']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_4'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_5']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_5'] else [0, 1]
         else:
-            maintenance_actions = [1, 0] if ratio > 0.9 else [0, 1]
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['a-checks']['alpha_6'] else [0, 1]
+
+        # if self.calendar_tree['A'].depth() <= 239:
+        #     maintenance_actions = [1, 0] if ratio > 0.78 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 342:
+        #     maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 726:
+        #     maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 784:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 926:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # else:
+        #     maintenance_actions = [1, 0] if ratio > 0.9 else [0, 1]
 
         for _ in self.phased_out.keys():
             if self.phased_out[_] == day:
@@ -193,7 +215,8 @@ class TreeDaysPlanner:
 
         on_c_maintenance_all = deepcopy(on_c_maintenance_0)
         for _ in on_c_maintenance_all:
-            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
+            print("{}-{} days remaining on maintenance".format(_,
+                                                               on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
@@ -235,7 +258,7 @@ class TreeDaysPlanner:
                     'public holidays'] and self.calendar.calendar[day]['allowed']['a-type']:
 
                 on_maintenance = list(fleet_state_1.keys())[0:slots]
-                #if flight hours are bellow 550, and there are 2 slots, use only one
+                # if flight hours are bellow 550, and there are 2 slots, use only one
                 if slots == 2 and fleet_state_1[on_maintenance[-1]]['FH-A'] <= 550:
                     on_maintenance = [list(fleet_state_1.keys())[0]]
 
@@ -315,20 +338,42 @@ class TreeDaysPlanner:
 
         on_maintenance = list(fleet_state_1.keys())[0]
         ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
-        if self.calendar_tree['C'].depth() <= 240:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
-        elif self.calendar_tree['C'].depth() <= 343:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
-        elif self.calendar_tree['C'].depth() <= 727:
-            maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
-        elif self.calendar_tree['C'].depth() <= 785:
-            maintenance_actions = [1, 0] if ratio > 0.75 else [0, 1]
-        elif self.calendar_tree['C'].depth() <= 927:
-            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
-        elif self.calendar_tree['C'].depth() <= 960:
-            maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        if self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_1']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_1'] else [0, 1]
+        elif self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_2']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_2'] else [0, 1]
+        elif self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_3']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_2'] else [0, 1]
+        elif self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_4']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_4'] else [0, 1]
+        elif self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_5']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_5'] else [0, 1]
+        elif self.calendar_tree['C'].depth() <= self.cp['c-checks']['beta_6']:
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_6'] else [0, 1]
         else:
-            maintenance_actions = [1, 0] if ratio > 0.84 else [0, 1]
+            maintenance_actions = [
+                1, 0] if ratio > self.cp['c-checks']['alpha_7'] else [0, 1]
+
+        # if self.calendar_tree['C'].depth() <= 240:
+        #     maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+        # elif self.calendar_tree['C'].depth() <= 343:
+        #     maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+        # elif self.calendar_tree['C'].depth() <= 727:
+        #     maintenance_actions = [1, 0] if ratio > 0.65 else [0, 1]
+        # elif self.calendar_tree['C'].depth() <= 785:
+        #     maintenance_actions = [1, 0] if ratio > 0.75 else [0, 1]
+        # elif self.calendar_tree['C'].depth() <= 927:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # elif self.calendar_tree['C'].depth() <= 960:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # else:
+        #     maintenance_actions = [1, 0] if ratio > 0.84 else [0, 1]
 
         fleet_keys = list(fleet_state_0.keys())
         for _ in fleet_keys:
@@ -341,7 +386,8 @@ class TreeDaysPlanner:
 
         on_c_maintenance_all = deepcopy(on_c_maintenance_0)
         for _ in on_c_maintenance_all:
-            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
+            print("{}-{} days remaining on maintenance".format(_,
+                                                               on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
@@ -364,18 +410,19 @@ class TreeDaysPlanner:
                 for key in fleet_state_1.keys():
                     d_ratio = fleet_state_1[key]['DY-D-RATIO']
                     if d_ratio >= 1:
-                        print("OHOH")
                         on_maintenance = key
                         le_d_check = True
 
-                new_code = self.code_generator['C'](fleet_state_1[on_maintenance]['C-SN'])
+                new_code = self.code_generator['C'](
+                    fleet_state_1[on_maintenance]['C-SN'])
 
                 valid_c, on_c_maintenance_1, real_tats = self.c_allowed(
                     day, on_maintenance, on_c_maintenance_1, slots, c_maintenance_counter, new_code,
                     on_c_maintenance_tats_1)
 
                 if valid_c:
-                    is_D_check = (self.is_d_check(on_maintenance, fleet_state_1) or le_d_check)
+                    is_D_check = (self.is_d_check(
+                        on_maintenance, fleet_state_1) or le_d_check)
                     fleet_state_1 = self.fleet_operate_one_day(fleet_state_1,
                                                                day_old,
                                                                on_c_maintenance_1,
@@ -469,7 +516,7 @@ class TreeDaysPlanner:
         all_maintenance = on_c_maintenance
         all_maintenance.append(on_maintenance)
         assert len(all_maintenance) != 0
-        if c_maintenance_counter > 0:  #major bug of all times
+        if c_maintenance_counter > 0:  # major bug of all times
             return False, all_maintenance, all_maintenance_tats
         if len(all_maintenance) > slots:
             return False, all_maintenance, all_maintenance_tats
@@ -512,9 +559,11 @@ class TreeDaysPlanner:
                 import ipdb
                 ipdb.set_trace()
                 print(e)
-            print("Depth: day {}".format(self.calendar_tree[type_check].depth()))
+            print("Depth: day {}".format(
+                self.calendar_tree[type_check].depth()))
 
-            next_node = self.solve(child, type_check=type_check, limit=limit - 1)
+            next_node = self.solve(
+                child, type_check=type_check, limit=limit - 1)
             if next_node == "cutoff":
                 cutoff = True
             elif next_node is not None:
@@ -529,11 +578,14 @@ class TreeDaysPlanner:
         # metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
         self.final_calendar[type_check] = result.calendar
         # self.final_schedule[type_check] = final_schedule
-        save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
         if type_check == 'C':
             self.phased_out = result.phased_out
-        save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
-        save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
+        save_pickle(self.final_calendar,
+                    "build/check_files/{}_checks.pkl".format(type_check))
+        save_pickle(result.calendar,
+                    "build/check_files/calendar_{}.pkl".format(type_check))
+        save_pickle(
+            final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
         save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
         # result = self.solve(root, type_check='A')
         # score = self.calendar_score(result, type_check=type_check)
@@ -570,7 +622,8 @@ class TreeDaysPlanner:
         score_waste_DY = 0
         score_waste_FH = 0
         score_waste_FC = 0
-        all_transverse_nodes = self.calendar_tree[type_check].rsearch(node_schedule.identifier)
+        all_transverse_nodes = self.calendar_tree[type_check].rsearch(
+            node_schedule.identifier)
         for node_id in all_transverse_nodes:
             node = self.calendar_tree[type_check][node_id]
             for aircraft in node.fleet_state.keys():
@@ -634,16 +687,23 @@ class TreeDaysPlanner:
                 if type_check == 'C':
                     tat = final_schedule[aircraft][_]['TAT']
                     end_date = advance_date(_, days=tat)
-                    dict1['END'].append(pd.to_datetime(end_date, format='%m/%d/%Y'))
+                    dict1['END'].append(pd.to_datetime(
+                        end_date, format='%m/%d/%Y'))
                 elif type_check == 'A':
                     dict1['END'].append(pd.to_datetime(_, format='%m/%d/%Y'))
 
-                waste_dy = final_schedule[aircraft][_]['STATE']['DY-{}-WASTE'.format(type_check)]
-                waste_fh = final_schedule[aircraft][_]['STATE']['FH-{}-WASTE'.format(type_check)]
-                waste_fc = final_schedule[aircraft][_]['STATE']['FC-{}-WASTE'.format(type_check)]
-                max_dy = final_schedule[aircraft][_]['STATE']['DY-{}-MAX'.format(type_check)]
-                max_fh = final_schedule[aircraft][_]['STATE']['FH-{}-MAX'.format(type_check)]
-                max_fc = final_schedule[aircraft][_]['STATE']['FC-{}-MAX'.format(type_check)]
+                waste_dy = final_schedule[aircraft][_]['STATE']['DY-{}-WASTE'.format(
+                    type_check)]
+                waste_fh = final_schedule[aircraft][_]['STATE']['FH-{}-WASTE'.format(
+                    type_check)]
+                waste_fc = final_schedule[aircraft][_]['STATE']['FC-{}-WASTE'.format(
+                    type_check)]
+                max_dy = final_schedule[aircraft][_]['STATE']['DY-{}-MAX'.format(
+                    type_check)]
+                max_fh = final_schedule[aircraft][_]['STATE']['FH-{}-MAX'.format(
+                    type_check)]
+                max_fc = final_schedule[aircraft][_]['STATE']['FC-{}-MAX'.format(
+                    type_check)]
                 if waste_dy < 0:
                     waste_dy = 0
                 if waste_fh < 0:

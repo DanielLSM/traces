@@ -1,9 +1,42 @@
 process:
-  c-checks: False
-  a-checks: False
+  c-checks: True
+  a-checks: True
   tasks: True
-  save_checks_to_excel: False
-  save_tasks_to_excel: False
+  save_checks_to_excel: True
+  save_tasks_to_excel: True
 parameters:
   c-checks:
+    beta_1: 240
+    alpha_1: 0.65
+    beta_2: 343
+    alpha_2: 0.65
+    beta_3: 727
+    alpha_3: 0.65
+    beta_4: 785
+    alpha_4: 0.75
+    beta_5: 927
+    alpha_5: 0.8
+    beta_6: 960
+    alpha_6: 0.8
+    alpha_7: 0.84
   a-checks:
+    beta_1: 239
+    alpha_1: 0.78
+    beta_2: 342
+    alpha_2: 0.76
+    beta_3: 726
+    alpha_3: 0.76
+    beta_4: 784
+    alpha_4: 0.8
+    beta_5: 926
+    alpha_5: 0.8
+    alpha_6: 0.9
+    merge:
+      alpha_merge_1: 0.4
+      beta_merge_1: 60
+      alpha_merge_2: 311
+      beta_merge_2: 0.5
+      alpha_merge_3: 0.7
+
+    # alpha_7, beta_6 and beta_merge_3 are 
+    # just remaning depth
