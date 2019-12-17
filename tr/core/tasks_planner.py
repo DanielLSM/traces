@@ -82,7 +82,7 @@ class TasksPlanner:
                 "build/check_files/calendar_C.pkl")
 
             # TODO you need to include the merged A to C checks, its kinda  important to know
-            # which ones are merged lol
+            # which ones are merged
             self.final_fleet_schedule['A'] = load_pickle(
                 "build/check_files/final_schedule_A.pkl")
             self.final_fleet_schedule['C'] = load_pickle(
@@ -424,11 +424,7 @@ class TasksPlanner:
         actual_days = (previous_check_time - last_executed_time).days
 
         ratio = actual_days / interval_max_days
-        # try:
-        #     assert ratio <= 1
-        # except:
-        #     import ipdb
-        #     ipdb.set_trace()
+
         return ratio
 
     # c_check is more complex, you got to figure it out

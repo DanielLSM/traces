@@ -8,10 +8,10 @@ from tr.core.tasks_planner import datetime_to_integer, integer_to_datetime
 
 try:
     final_fleet_schedule = {}
-    task_calendar = load_pickle("task_calendar.pkl")
-    processed_aircraft_tasks = load_pickle("processed_aircraft_tasks.pkl")
-    final_fleet_schedule['A'] = load_pickle("final_schedule_A.pkl")
-    final_fleet_schedule['C'] = load_pickle("final_schedule_C.pkl")
+    task_calendar = load_pickle("build/output_files/task_calendar.pkl")
+    processed_aircraft_tasks = load_pickle("build/tasks_files/processed_aircraft_tasks.pkl")
+    final_fleet_schedule['A'] = load_pickle("build/check_files/final_schedule_A.pkl")
+    final_fleet_schedule['C'] = load_pickle("build/check_files/final_schedule_C.pkl")
 except:
     raise "Tasks calendar file not found"
 
@@ -126,7 +126,7 @@ def plot_MRI_distrib(aircraft,
              fontweight='bold')
 
     # Show graphic
-    # plt.show()
+    plt.show()
     return work_package_delta_dates
 
 
@@ -149,14 +149,11 @@ def plot_MRI_distrib_per_aircraft(aircraft, check='A'):
     plt.xlabel("MRI clusters number of days to due-date")
     plt.hist(all_delta_dates_mris, 50)
     plt.show()
-    import ipdb
-    ipdb.set_trace()
+
 
 
 plot_MRI_distrib_per_aircraft('Aircraft-1', check='A')
 plot_MRI_distrib_per_aircraft('Aircraft-2', check='A')
-plot_MRI_distrib_per_aircraft('Aircraft-3', check='A')
-plot_MRI_distrib_per_aircraft('Aircraft-4', check='A')
 
 type_checks = ['A', 'C', 'C MERGED WITH A']
 

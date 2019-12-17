@@ -1,49 +1,131 @@
-the approach is as follows:
+# Installation 
+Instructions for kernel based Linux OS's (like ubuntu) and Windows are given bellow. The instructions and the code was tested on Ubuntu 18 and Windows 10. Since the instalation is made via Anaconda virtual environments, MAC OS is also an option, but it was not tested. At the end of the document there are instructions to run the code.
 
-1)define what is the discretization: for 0.1 its 11^2
-2)for one state compute all actions and make N_action new states for each state, so N_actions * 11²
-3)reduce the N_actions * 11² back to 121 (11²) through a cost function
-4)repeat 2) and 3) until end of horizon
+## Pre-requirements
+The installation is made via Anaconda 3. So the installation of Anaconda 3 is required and Jupyter Notebook/Jupyter Lab
 
-Note: the number of actions depends on the number of slots available, so its always varying... In reality, lets say for A-Checks/C-Checks it depends on the number of slots,
-so if at any day there are 3 slots, there are actually 4 actions: 0,1,2,3 slots
+## Ubuntu 18.0
+0) Open a terminal
+1) Clone the repository 
+```
+cd ~
+git clone [repo_link]
+```
+2) Move to the repository in your system
+```
+cd traces
+```
+3) Install the anaconda environment
+```
+conda env create -f remap_env_linux.yml
+```
+4) Load the anaconda environment
+```
+conda activate remap_env_linux.yml
+```
+5) Install this package on the environment
+```
+pip install -e .
+```
 
-D check slots:
-Every C check counts as a D cycle, and every D check counts as a C cycle, if it reaches a maximum of
-D-END = 4, it phases out.
+## Windows 10
+0) Download the repository through a git software or by travelling to the website and download as a zip (unpack it afterwards)
+1) Open a Anaconda 
+2) On the left tab, click on "Environments"
+3) On the bottom left click on the create "+" sign.
+4) Select the icon "folder", then travel to the downloaded repository directory and select the yaml file "remap_env_windows.yml" then click ok. 
+4) Still on the "Environments" tab, click on "remap_d6_1" to load the environment
+--------------------------------------------
+### Installing our package in the Anaconda environment
+5) Search on Windows for "Anaconda Navigator (cmd)" this should open a command line/terminal.
+6) Travel to the repository in your system, if you downloaded it and unpackaed it, it should be:
+```
+cd Downloads/traces
+```
+7) Activate our remap environment where we want to install this package:
+```
+conda activate remap_d6_1
+```
+8) Install this package (messages of successfully installed should appear at the end):
+```
+python setup.py install
+```
+# Running the code
+Here two alternatives (command-line interface and jupyter notebook/lab) for each OS are presented to run the code.
 
-D-MAX : the 3rd or the 4th will be D check
-
-when we do a D check, D-cycle resets to 1
-
-its either when it reaches to 4 or when it reaches the maximum amount of days
+## Before running
+The execution of the code is made from a config.yaml which controls the pace of the execution. Default parameters are given on the config.yaml, and a first run with this file is recommended. To turn off parts of the execution of the full program in terms of A-check/C-check and tasks planning, simply change the flags from True to False. The parameters for each planning algorithm were explained in the final report. 
 
 
-C check slots:
-0.0) All aircrafts are operating on day one. (unless it states a future date on OPERATION)
-0) on C_initial, some of the planes are past their due dates in FH/FC/DY, this is not valid so they should immediatily go to maintenance. Then the quantity they passed after the C-ccheck, should be discounted on the next C-check. Columns C_TOLU-DY/FH/FC tell how much tolerance was used in the previous check. This value has to be subtracted for the next check and should not be used again on the planning horizon.: 1
-1) you cannot do C-checks on peak season, unless they are specified on more_c_slots: 1
-2) you cannot do C-checks on C_not_allowed, unless they are in more_c_slots: 1
-3) you cannot assing 2 C-Checks at the same time, they need a 3 days time: (it depends on START DAY INTERVAL on ADDITIONAL sheet):1
-4) you can not do C-checks at fridays?: false you can do on fridays, 3 slots
-5) you can not do C-Checks in public holidays: true
-6) you can not do C-checks in the weekends: true
-6.1) on all other days, you can always do 3 C-Checks at the same time.: unless specified on MORE_C_SLOTS sheet: true
-7) C-checks should be made ininterupt, C_elapsed_time indicates how many days an Aircraft needs to be on the C-check hangar. if the TAT is 13, it actually means 13+public_holidays+weekends, if the due date would end up in a peak season, without slot, or in a C_not allowed, without slot, then its not possible to schedule: true
-8) on C_elapsed_time a TAT of -1, means a phase out, the aircraft stops working, so uppon the next time the aircraft ends FH, FC our DY, it stops operating and no longer needs maintenance.: true
+## Ubuntu 18.0
 
-A check slots:
-0.0) All aircrafts are operating on day one.: (same as C-slots, need to check OPERATION on D-INTIAL) 
-0) on A_initial, some of the planes are past their due dates in FH/FC/DY, this is now valid so they should immediatily go to maintenance. Then the quantity they passed after the C-ccheck, should be discounted on the next C-check. Columns A_TOLU-DY/FH/FC tell how much tolerance was used in the previous check. This value has to be subtracted for the next check and should not be used again on the planning horizon: true
-1) you CAN do A-checks on peak season: true
-2) you cannot do A-checks on A_not_allowed, unless they are in more_A_slots, more_A_slots does not add slots, just replaces them, you can only do a maximum of 2 A-sots at each time: true
-3) you CAN assing 2 A-Checks at the same time: true (you can do 3 if one is merged with C-check)
-4) you can not do A-checks at fridays(unless specified on A_more_slot)?: true
-5) you can not do A-Checks in public holidays: true
-6) you can not do A-checks in the weekends: true
-6.1) on all other days, you can always do 1 A-Check at the same time: true
-7) A-checks only take one day: true
+### - command-line interface
+1) Move the directory to the main.py
+```
+cd ~/traces/tr/core
+```
+2) Run with the pre-execution flag on (needed for the first run)
+```
+python main.py -pc True
+```
+3) Let the full program run, then find excel files for check and task planning on the created folders "~/traces/tr/core/check_planning" and "~/traces/tr/core/task_planning" respectively 
+4) Additionally a metrics file can be run at the end to find some metrics computed for the final report
+```
+python metrics.py
+```
+A serious of figures presenting metrics should appear, feel free to terminate the program (it will loop through all checks for a total of about 500 figures)
 
-Merge A with C-Checks:
-When it is possible to merge an A-check with a C-check?
-if a C-check is ongoing, and the aircraft is also highest-priority merge, otherwise, do not merge
+### - Jupyter Notebook/Lab
+
+1) Move the directory to the main.py
+```
+cd ~/traces/tr/core
+```
+2) Install jupyter lab/notebook
+```
+pip install jupyter
+```
+3) Run Jupyter
+```
+jupyter lab
+```
+or
+```
+jupyter notebook
+```
+4) Open the notebook "ReMAP D6.1.ipynb"
+5) Run each cell from top to bottom
+A series of figures presenting metrics should appear, feel free to terminate the program (it will loop through all checks for a total of about 500 figures)
+
+
+## Windows 10
+
+### - command-line interface
+
+0) Search on Windows for "Anaconda Navigator (cmd)" this should open a command line/terminal.
+1) Activate our remap environment where we want to install this package:
+```
+conda activate remap_d6_1
+```
+2) Move the directory to the main.py
+```
+cd Downloads/traces/tr/core
+```
+3) Run with the pre-execution flag on (needed for the first run)
+```
+python main.py -pc True
+```
+4) Let the full program run, then find excel files for check and task planning on the created folders "Downloads/traces/tr/core/check_planning" and "Downloads/traces/tr/core/task_planning" respectively 
+5) Additionally a metrics file can be run at the end to find some metrics computed for the final report
+```
+python metrics.py
+```
+A serious of figures presenting metrics should appear, feel free to terminate the program (it will loop through all checks for a total of about 500 figures)
+
+### - Jupyter Notebook/Lab
+
+1) Open Anaconda GUI interface
+2) On the left tab select "home" tab
+3) Open Jupyter Lab or Jupyter Notebook
+4) Open the notebook "ReMAP D6.1.ipynb"
+5) Run each cell from top to bottom
