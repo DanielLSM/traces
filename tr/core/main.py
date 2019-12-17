@@ -1,14 +1,12 @@
 import yaml
 import argparse
-from termcolor import colored
+
 from tr.core.helpers import read_yaml, build_fast_exec_file
 from tr.core.utils import load_pickle
 from tr.core.edf import SchedulerEDF
 VERSION = 1.0
 
-print(
-    colored(
-        '''
+print('''
   _____           __  __              _____      _____      __        __ 
  |  __ \         |  \/  |     /\     |  __ \    |  __ \    / /       /_ |
  | |__) |   ___  | \  / |    /  \    | |__) |   | |  | |  / /_        | |
@@ -18,7 +16,7 @@ print(
                                                                          
                                                       
                                                       
-                                                      ''', "blue"))
+                                                      ''')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--version", help="show program version")
@@ -61,14 +59,10 @@ if args.run:
 
     if config_file['process']['save_checks_to_excel']:
         try:
-            final_schedule_a = load_pickle(
-                "build/check_files/final_schedule_A.pkl")
-            final_schedule_c = load_pickle(
-                "build/check_files/final_schedule_C.pkl")
-            scheduler.optimizer_checks.final_schedule_to_excel(
-                final_schedule_a, type_check="A")
-            scheduler.optimizer_checks.final_schedule_to_excel(
-                final_schedule_c, type_check="C")
+            final_schedule_a = load_pickle("build/check_files/final_schedule_A.pkl")
+            final_schedule_c = load_pickle("build/check_files/final_schedule_C.pkl")
+            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_a, type_check="A")
+            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_c, type_check="C")
         except:
             raise "Process checks first before saving!"
 

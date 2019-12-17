@@ -4,7 +4,7 @@ import random
 import datetime
 from tqdm import tqdm
 
-from tr.core.resources import f2_out, f1_in_tasks, f1_in_checks
+from tr.core.resources import f1_in_tasks, f1_in_checks
 from tr.core.utils import dict_to_list, diff_time_list, get_slots, diff_time_list_peak_season
 from tr.core.utils import advance_date, days_between_dates, convert_iso_to_timestamp
 from tr.core.utils import look_o_dict, load_pickle, save_pickle
@@ -170,10 +170,8 @@ def book_to_kwargs_tasks(book):
         # df['LAST EXEC DT'].fillna(False, inplace=True)
 
         if not isinstance(df['LIMIT EXEC DT'][0], pd.Timestamp):
-            df['LIMIT EXEC DT'] = pd.to_datetime(
-                df['LIMIT EXEC DT'], format='%m/%d/%Y')
-            df['LAST EXEC DT'] = pd.to_datetime(
-                df['LAST EXEC DT'], format='%m/%d/%Y')
+            df['LIMIT EXEC DT'] = pd.to_datetime(df['LIMIT EXEC DT'], format='%m/%d/%Y')
+            df['LAST EXEC DT'] = pd.to_datetime(df['LAST EXEC DT'], format='%m/%d/%Y')
             print("INFO: using anonymized data")
         # df['PER CALEND'].fillna(0, inplace=True)
         df['TASK BY BLOCK'].fillna("C-CHECK", inplace=True)
@@ -277,10 +275,8 @@ def book_to_kwargs_tasks(book):
         # The CAL column needs a special treatment. The years are transformed to months.
         # Two new columns will be created: PER Month (only months and years (expressed in months))
         # and PER DAY (only in days!)
-        df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(
-            preprocessMonths).fillna(0)
-        df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(
-            preprocessDays).fillna(0)
+        df_aircraft['PER MONTH'] = df_aircraft['PER CALEND'].apply(preprocessMonths).fillna(0)
+        df_aircraft['PER DAY'] = df_aircraft['PER CALEND'].apply(preprocessDays).fillna(0)
 
         if not isinstance(df_aircraft['LIMIT EXEC DT'][0], pd.Timestamp):
             df_aircraft['LIMIT EXEC DT'] = pd.to_datetime(df_aircraft['LIMIT EXEC DT'],
@@ -314,8 +310,7 @@ def book_to_kwargs_tasks(book):
         df_aircraft = df.copy(deep=True)
         df_aircraft = df_aircraft[df_aircraft['A/C'] == aircraft]
         df_aircraft = df_aircraft.reset_index(drop=True)
-        df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(
-            df_aircraft)
+        df_aircraft, tasks_no_date, index_labels, amount_remove = shred_tasks(df_aircraft)
         df_aircraft_shaved[aircraft] = df_aircraft
         aircraft_clustered_tasks[aircraft] = OrderedDict()
 
@@ -340,8 +335,7 @@ def book_to_kwargs_tasks(book):
 
             per_fc_boolean = per_fc if not per_fc else (per_fc < 5000)
             per_fh_boolean = per_fh if not per_fh else (per_fh < 7500)
-            per_months_boolean = per_months if not per_months else (
-                per_months < 24)
+            per_months_boolean = per_months if not per_months else (per_months < 24)
 
             # o gajo é um bocado canceroso, se já tiverem clustered deixa tar,
             # se forem individuais, corrige? XD
@@ -396,8 +390,7 @@ def book_to_kwargs_tasks(book):
                     aircraft_clustered_tasks[aircraft][item][task_attribute] = aircraft_tasks[
                         aircraft][item][nrs_tasks[0]][task_attribute]
 
-                    aircraft_clustered_tasks[aircraft][item]['SKILL'] = OrderedDict(
-                    )
+                    aircraft_clustered_tasks[aircraft][item]['SKILL'] = OrderedDict()
                     for taskz in nrs_tasks:
                         for skillz in aircraft_tasks[aircraft][item][taskz]['SKILL'].keys():
                             skill_value = aircraft_tasks[aircraft][item][taskz]['SKILL'][skillz]
@@ -504,7 +497,6 @@ if __name__ == '__main__':
     try:
         book_checks = excel_to_book(f1_in_checks)
         # book_tasks = excel_to_book(f1_in_tasks)
-        # book_output = excel_to_book(f2_out)
     except Exception as e:
         raise e
 
