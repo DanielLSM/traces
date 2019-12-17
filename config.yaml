@@ -1,6 +1,6 @@
 process:
-  c-checks: False
-  a-checks: False
+  c-checks: True
+  a-checks: True
   tasks: True
   save_checks_to_excel: True
   save_tasks_to_excel: True
@@ -37,6 +37,5 @@ parameters:
       alpha_merge_2: 311
       beta_merge_2: 0.5
       alpha_merge_3: 0.7
-
-    # alpha_7, beta_6 and beta_merge_3 are 
+    # alpha_7, beta_6 and beta_merge_3 are
     # just remaning depth

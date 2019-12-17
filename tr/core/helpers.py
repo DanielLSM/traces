@@ -24,9 +24,9 @@ def build_fast_exec_file():
         os.makedirs("build/check_files")
         os.makedirs("build/tasks_files")
         os.makedirs("build/output_files")
-    if not os.path.exists("check_planning")
+    if not os.path.exists("check_planning"):
         os.makedirs("check_planning")
-    if not os.path.exists("task_planning")
+    if not os.path.exists("task_planning"):
         os.makedirs("task_planning")
     try:
         book_checks = excel_to_book(f1_in_checks)
