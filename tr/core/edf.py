@@ -32,19 +32,16 @@ checks = {
 class SchedulerEDF(FleetManagerBase):
     """ Currently for A/C-Checks only, nodes are partial schedules and, 
     tree as total schedules """
-
     def __init__(self, *args, **kwargs):
         FleetManagerBase.__init__(self, **kwargs)
 
         iso_str = '01/10/2020'
         daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
-
         self.calendar.calendar[daterinos]['resources']['slots']['a-type'] += 1
 
         self.config_params = kwargs['config_params']
 
-        self.optimizer_checks = TreeDaysPlanner(
-            self.calendar, self.fleet, self.config_params)
+        self.optimizer_checks = TreeDaysPlanner(self.calendar, self.fleet, self.config_params)
 
     def plan_by_days(self, check_type="C"):
         self.optimizer_checks.solve_schedule(check_type)
