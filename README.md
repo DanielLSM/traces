@@ -51,6 +51,7 @@ conda activate remap_d6_1
 python setup.py install
 ```
 you should be on a folder with a setup.py
+
 9) Dowload the treelib repository and unpack https://github.com/DanielLSM/treelib
 10) Travel to the repository in your system, if you downloaded it and unpackaed it, it should be:
 ```
