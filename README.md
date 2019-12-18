@@ -37,7 +37,7 @@ pip install -e .
 4) Still on the "Environments" tab, click on "remap_d6_1" to load the environment
 --------------------------------------------
 ### Installing our package in the Anaconda environment
-5) Search on Windows for "Anaconda Navigator (cmd)" this should open a command line/terminal.
+5) Search on Windows for "Anaconda Prompt (Anaconda3)" this should open a command line/terminal.
 6) Travel to the repository in your system, if you downloaded it and unpackaed it, it should be:
 ```
 cd Downloads/traces-master
