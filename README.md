@@ -119,7 +119,7 @@ A series of figures presenting metrics should appear, feel free to terminate the
 
 ### - command-line interface
 
-0) Search on Windows for "Anaconda Navigator (cmd)" this should open a command line/terminal.
+0) Search on Windows for "Anaconda Prompt (Anaconda3)" this should open a command line/terminal.
 1) Activate our remap environment where we want to install this package:
 ```
 conda activate remap_d6_1
