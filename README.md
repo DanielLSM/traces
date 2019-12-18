@@ -40,7 +40,7 @@ pip install -e .
 5) Search on Windows for "Anaconda Navigator (cmd)" this should open a command line/terminal.
 6) Travel to the repository in your system, if you downloaded it and unpackaed it, it should be:
 ```
-cd Downloads/traces
+cd Downloads/traces-master
 ```
 7) Activate our remap environment where we want to install this package:
 ```
@@ -50,6 +50,18 @@ conda activate remap_d6_1
 ```
 python setup.py install
 ```
+you should be on a folder with a setup.py
+9) Dowload the treelib repository and unpack https://github.com/DanielLSM/treelib
+10) Travel to the repository in your system, if you downloaded it and unpackaed it, it should be:
+```
+cd Downloads/treelib-master
+```
+you should be on a folder with a setup.py
+11) 
+```
+python setup.py install
+```
+installation is now complete
 # Running the code
 Here two alternatives (command-line interface and jupyter notebook/lab) for each OS are presented to run the code.
 
@@ -109,7 +121,7 @@ conda activate remap_d6_1
 ```
 2) Move the directory to the main.py
 ```
-cd Downloads/traces/tr/core
+cd Downloads/traces-master/tr/core
 ```
 3) Run with the pre-execution flag on (needed for the first run)
 ```
