@@ -21,7 +21,7 @@ conda env create -f remap_env_linux.yml
 ```
 4) Load the anaconda environment
 ```
-conda activate remap_env_linux.yml
+conda activate remap_d6_1
 ```
 5) Install this package on the environment
 ```
