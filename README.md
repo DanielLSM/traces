@@ -32,7 +32,7 @@ pip install -e .
 0) Download the repository through a git software or by travelling to the website and download as a zip (unpack it afterwards)
 1) Open a Anaconda 
 2) On the left tab, click on "Environments"
-3) On the bottom left click on the create "+" sign.
+3) On the bottom left click on import button.
 4) Select the icon "folder", then travel to the downloaded repository directory and select the yaml file "remap_env_windows.yml" then click ok. 
 4) Still on the "Environments" tab, click on "remap_d6_1" to load the environment
 --------------------------------------------
