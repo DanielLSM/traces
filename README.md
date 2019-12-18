@@ -57,6 +57,10 @@ you should be on a folder with a setup.py
 ```
 cd Downloads/treelib-master
 ```
+or
+```
+cd ../treelib-master
+```
 you should be on a folder with a setup.py
 11) 
 ```
