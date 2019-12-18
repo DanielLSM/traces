@@ -68,7 +68,7 @@ cd ~/traces/tr/core
 ```
 python main.py -pc True
 ```
-3) Let the full program run, then find excel files for check and task planning on the created folders "~/traces/tr/core/check_planning" and "~/traces/tr/core/task_planning" respectively 
+3) Let the full program run, then find excel files for check and task planning on the created folders ~/traces/tr/core/check_planning and ~/traces/tr/core/task_planning respectively 
 4) Additionally a metrics file can be run at the end to find some metrics computed for the final report
 ```
 python metrics.py
