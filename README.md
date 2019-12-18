@@ -21,7 +21,7 @@ conda env create -f remap_env_linux.yml
 ```
 4) Load the anaconda environment
 ```
-conda activate remap_env_linux.yml
+conda activate remap_d6_1
 ```
 5) Install this package on the environment
 ```
@@ -80,7 +80,7 @@ cd ~/traces/tr/core
 ```
 python main.py -pc True
 ```
-3) Let the full program run, then find excel files for check and task planning on the created folders "~/traces/tr/core/check_planning" and "~/traces/tr/core/task_planning" respectively 
+3) Let the full program run, then find excel files for check and task planning on the created folders ~/traces/tr/core/check_planning and ~/traces/tr/core/task_planning respectively 
 4) Additionally a metrics file can be run at the end to find some metrics computed for the final report
 ```
 python metrics.py
