@@ -28,7 +28,7 @@ class TreeDaysPlanner:
         self.fleet = fleet
         self.cp = config_params
 
-        self.calendar_tree = {'A': Tree(), 'C': Tree()}
+        self.calendar_tree = {'A': Tree(), 'C': Tree(), 'A-RL': Tree()}
         iso_str = '1/1/2022'
         self.daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
         self.removed_aircrafts = OrderedDict()
@@ -61,6 +61,19 @@ class TreeDaysPlanner:
                                     identifier="root")
 
             self.calendar_tree[type_check].add_node(root)
+
+        fleet_state = build_fleet_state(self.fleet, type_check='A')
+        fleet_state = order_fleet_state(fleet_state)
+
+        root = NodeScheduleDays(calendar=OrderedDict(),
+                                day=self.calendar.start_date,
+                                fleet_state=fleet_state,
+                                action_maintenance=0,
+                                assignment=[],
+                                tag="Root",
+                                identifier="root")
+
+        self.calendar_tree['A-RL'].add_node(root)        
 
         self.schedule_counter = 0
         self.all_schedules = deque(maxlen=100)  # maintain only the top 10
@@ -139,6 +152,8 @@ class TreeDaysPlanner:
             childs = self.expand_a(node_schedule, type_check)
         elif type_check == 'C':
             childs = self.expand_c(node_schedule, type_check)
+        elif type_check == 'A-RL':
+            childs = self.expand_a(node_schedule, 'A')
         return childs
 
     def expand_a(self, node_schedule, type_check):
@@ -465,6 +480,173 @@ class TreeDaysPlanner:
                                          phased_out=phased_out_0))
         return childs
 
+    def expand_a_RL(self, node_schedule, type_check):
+        # recebe uma copia do calendario C para consultar
+        # precisamos do mesmo que a outra a dizer merged
+        calendar_0 = deepcopy(node_schedule.calendar)
+        calendar_1 = deepcopy(node_schedule.calendar)
+        fleet_state_0 = deepcopy(node_schedule.fleet_state)
+        fleet_state_1 = deepcopy(node_schedule.fleet_state)
+        on_c_maintenance_0 = deepcopy(node_schedule.on_c_maintenance)
+        on_c_maintenance_1 = deepcopy(node_schedule.on_c_maintenance)
+        on_c_maintenance_tats_0 = deepcopy(node_schedule.on_c_maintenance_tats)
+        on_c_maintenance_tats_1 = deepcopy(node_schedule.on_c_maintenance_tats)
+        on_maintenance_merged_0 = deepcopy(node_schedule.on_maintenance_merged)
+        on_maintenance_merged_1 = deepcopy(node_schedule.on_maintenance_merged)
+        merged_flag = False
+
+        day = node_schedule.day
+        day_old = day
+        childs = []
+        day = advance_date(day, days=int(1))
+        slots = self.get_slots(day, type_check)
+
+        iso_str = '5/2/2019'
+        daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        if day == daterinos:
+            slots += 1
+
+        iso_str = '7/22/2019'
+        daterinos = pd.to_datetime(iso_str, format='%m/%d/%Y')
+        if day == daterinos:
+            slots += 1
+
+        on_maintenance = list(fleet_state_1.keys())[0]
+        ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
+        if self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_1']:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_1'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_2']:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_2'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_3']:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_3'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_4']:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_4'] else [0, 1]
+        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_5']:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_5'] else [0, 1]
+        else:
+            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_6'] else [0, 1]
+
+        # if self.calendar_tree['A'].depth() <= 239:
+        #     maintenance_actions = [1, 0] if ratio > 0.78 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 342:
+        #     maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 726:
+        #     maintenance_actions = [1, 0] if ratio > 0.76 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 784:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= 926:
+        #     maintenance_actions = [1, 0] if ratio > 0.8 else [0, 1]
+        # else:
+        #     maintenance_actions = [1, 0] if ratio > 0.9 else [0, 1]
+
+        for _ in self.phased_out.keys():
+            if self.phased_out[_] == day:
+                print("{} phased out and is no longer in the fleet".format(_))
+                fleet_state_0.pop(_, None)
+                fleet_state_1.pop(_, None)
+
+        on_c_maintenance_all = deepcopy(on_c_maintenance_0)
+        for _ in on_c_maintenance_all:
+            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
+            if on_c_maintenance_tats_0[_] == 0:
+                on_c_maintenance_0.remove(_)
+                on_c_maintenance_tats_0.pop(_, None)
+                on_c_maintenance_1.remove(_)
+                on_c_maintenance_tats_1.pop(_, None)
+                if _ in on_maintenance_merged_0:
+                    on_maintenance_merged_0.remove(_)
+                    on_maintenance_merged_1.remove(_)
+            else:
+                on_c_maintenance_tats_0[_] -= 1
+                on_c_maintenance_tats_1[_] -= 1
+
+        on_maintenance_merged = []
+        if self.final_calendar['C'][day]['MAINTENANCE']:
+            on_c_calendar = self.final_calendar['C'][day]['ASSIGNMENT']
+            on_c_calendar_tat = self.final_calendar['C'][day]['ASSIGNED STATE']['TAT']
+            on_c_maintenance_0.append(on_c_calendar)
+            on_c_maintenance_1.append(on_c_calendar)
+            on_c_maintenance_tats_0[on_c_calendar] = on_c_calendar_tat
+            on_c_maintenance_tats_1[on_c_calendar] = on_c_calendar_tat
+            if self.calendar_tree['A'].depth() <= 60:
+                if fleet_state_0[on_c_calendar]['TOTAL-RATIO'] > 0.40:
+                    if on_c_calendar not in on_maintenance_merged_0:
+                        on_maintenance_merged.append(on_c_calendar)
+                        merged_flag = True
+            elif self.calendar_tree['A'].depth() <= 311:
+                if fleet_state_0[on_c_calendar]['TOTAL-RATIO'] > 0.50:
+                    if on_c_calendar not in on_maintenance_merged_0:
+                        on_maintenance_merged.append(on_c_calendar)
+                        merged_flag = True
+            else:
+                if fleet_state_0[on_c_calendar]['TOTAL-RATIO'] > 0.70:
+                    if on_c_calendar not in on_maintenance_merged_0:
+                        on_maintenance_merged.append(on_c_calendar)
+                        merged_flag = True
+
+        for action_value in maintenance_actions:
+            if action_value and self.calendar.calendar[day]['allowed'][
+                    'public holidays'] and self.calendar.calendar[day]['allowed']['a-type']:
+
+                on_maintenance = list(fleet_state_1.keys())[0:slots]
+                # if flight hours are bellow 550, and there are 2 slots, use only one
+                if slots == 2 and fleet_state_1[on_maintenance[-1]]['FH-A'] <= 550:
+                    on_maintenance = [list(fleet_state_1.keys())[0]]
+
+                for _ in on_maintenance_merged_0:
+                    if _ in on_maintenance:
+                        slots += 1
+                        on_maintenance = list(fleet_state_1.keys())[0:slots]
+                on_maintenance.extend(on_maintenance_merged)
+
+                fleet_state_1 = self.fleet_operate_one_day(fleet_state_1, day_old, on_maintenance,
+                                                           type_check, on_c_maintenance_1)
+                fleet_state_1 = order_fleet_state(fleet_state_1)
+
+                valid = self.check_safety_fleet(fleet_state_1)
+                if valid:
+                    calendar_1[day] = {}
+                    calendar_1[day]['SLOTS'] = slots
+                    calendar_1[day]['MAINTENANCE'] = True
+                    calendar_1[day]['ASSIGNMENT'] = on_maintenance
+                    calendar_1[day]['MERGED FLAG'] = merged_flag
+                    calendar_1[day]['ASSIGNED STATE'] = {}
+                    for _ in on_maintenance:
+                        calendar_1[day]['ASSIGNED STATE'][_] = fleet_state_1[_]
+                    childs.append(
+                        NodeScheduleDays(calendar_1,
+                                         day,
+                                         fleet_state_1,
+                                         action_value,
+                                         assignment=on_maintenance,
+                                         on_c_maintenance=on_c_maintenance_1,
+                                         on_c_maintenance_tats=on_c_maintenance_tats_1,
+                                         on_maintenance_merged=on_maintenance_merged))
+            if not action_value:
+                on_maintenance = []
+                fleet_state_0 = self.fleet_operate_one_day(fleet_state_0, day_old, on_maintenance,
+                                                           type_check, on_c_maintenance_0)
+                fleet_state_0 = order_fleet_state(fleet_state_0)
+                valid = self.check_safety_fleet(fleet_state_0)
+                if valid:
+                    calendar_0[day] = {}
+                    calendar_0[day]['SLOTS'] = slots
+                    calendar_0[day]['MAINTENANCE'] = False
+                    calendar_0[day]['ASSIGNMENT'] = None
+                    calendar_0[day]['MERGED FLAG'] = merged_flag
+                    childs.append(
+                        NodeScheduleDays(calendar_0,
+                                         day,
+                                         fleet_state_0,
+                                         action_value,
+                                         assignment=on_maintenance,
+                                         on_c_maintenance=on_c_maintenance_0,
+                                         on_c_maintenance_tats=on_c_maintenance_tats_0,
+                                         on_maintenance_merged=on_maintenance_merged))
+
+        return childs
+
+
     def is_d_check(self, on_maintenance, fleet_state):
         d_cycle = fleet_state[on_maintenance]['D-CYCLE']
         d_cycle_max = fleet_state[on_maintenance]['D-CYCLE-MAX']
@@ -550,28 +732,83 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
+
+    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=100):
+        root = deepcopy(node_schedule)
+        for episode in range(episodes):
+            print("INFO: starting new episode")
+            import ipdb
+            ipdb.set_trace()
+            self.solve_RL(root, type_check='A-RL', limit=1050)
+            
+    def solve_RL(self, node_schedule, type_check='A-RL', limit=1050):
+        if self.check_solved(node_schedule.calendar):
+            return node_schedule
+        if limit == 0:
+            return "cutoff"
+        cutoff = False
+        for child in self.expand_with_heuristic(node_schedule, type_check=type_check):
+            self.calendar_tree[type_check][node_schedule.identifier].count += 1
+            if self.calendar_tree[type_check][node_schedule.identifier].count > 1:
+                print("BACKTRACKKKKKKKK")
+            # print("Child is {}, parent is {}".format(child, node_schedule))
+            try:
+                self.calendar_tree[type_check].add_node(child, node_schedule)
+            except Exception as e:
+                import ipdb
+                ipdb.set_trace()
+                print(e)
+            print("Depth: day {}".format(self.calendar_tree[type_check].depth()))
+
+            next_node = self.solve_RL(child, type_check=type_check, limit=limit - 1)
+            if next_node == "cutoff":
+                cutoff = True
+            elif next_node is not None:
+                return next_node
+        return "cutoff" if cutoff else None
+
+
     def solve_schedule(self, type_check='A'):
-        root_id = self.calendar_tree[type_check].root
-        root = self.calendar_tree[type_check].get_node(root_id)
-        result = self.solve(root, type_check=type_check)
-        final_schedule = self.calendar_to_schedule(result, type_check)
-        # metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
-        self.final_calendar[type_check] = result.calendar
-        # self.final_schedule[type_check] = final_schedule
-        if type_check == 'C':
-            self.phased_out = result.phased_out
-        save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
-        save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
-        save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
-        save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
-        # result = self.solve(root, type_check='A')
-        # score = self.calendar_score(result, type_check=type_check)
-        # self.calendar_tree[type_check].show(nid=result.identifier)
-        # A optmized: (13261, 9134.300000000052, 103953.90000000001)
-        # A non-optimized: (55577, 254913.6, 365113.99999999936)
-        del result
-        print("INFO: {}-checks planned for the full time horizon".format(type_check))
-        # return result
+        if type_check == 'A' or type_check == 'C':
+            root_id = self.calendar_tree[type_check].root
+            root = self.calendar_tree[type_check].get_node(root_id)
+            result = self.solve(root, type_check=type_check)
+            final_schedule = self.calendar_to_schedule(result, type_check)
+            # metrics_dict = self.final_schedule_to_excel(final_schedule, type_check)
+            self.final_calendar[type_check] = result.calendar
+            # self.final_schedule[type_check] = final_schedule
+            if type_check == 'C':
+                self.phased_out = result.phased_out
+            save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
+            save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
+            save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
+            save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
+            # result = self.solve(root, type_check='A')
+            # score = self.calendar_score(result, type_check=type_check)
+            # self.calendar_tree[type_check].show(nid=result.identifier)
+            # A optmized: (13261, 9134.300000000052, 103953.90000000001)
+            # A non-optimized: (55577, 254913.6, 365113.99999999936)
+            del result
+            print("INFO: {}-checks planned for the full time horizon".format(type_check))
+            # return result
+        elif type_check == "A-RL":
+            root_id = self.calendar_tree[type_check].root
+            root = self.calendar_tree[type_check].get_node(root_id)
+            import ipdb
+            ipdb.set_trace()
+
+            result = self.solve_with_RL(root, type_check=type_check)
+            final_schedule = self.calendar_to_schedule(result, type_check)
+            self.final_calendar[type_check] = result.calendar
+            save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
+            save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
+            save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
+            save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
+            print("INFO: {}-checks planned for the full time horizon".format(type_check))
+
+            import ipdb
+            ipdb.set_trace()
+            pass
 
     def calendar_to_schedule(self, node_schedule, type_check='A'):
         calendar = deepcopy(node_schedule.calendar)

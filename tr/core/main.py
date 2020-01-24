@@ -54,15 +54,18 @@ if args.run:
     if config_file['process']['a-checks']:
         scheduler.plan_by_days("A")
 
+    if config_file['process']['a-checks-rl']:
+        scheduler.plan_by_days("A-RL")
+
     if config_file['process']['tasks']:
         scheduler.plan_tasks_fleet()
 
     if config_file['process']['save_checks_to_excel']:
         try:
-            final_schedule_a = load_pickle("build/check_files/final_schedule_A.pkl")
             final_schedule_c = load_pickle("build/check_files/final_schedule_C.pkl")
-            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_a, type_check="A")
+            final_schedule_a = load_pickle("build/check_files/final_schedule_A.pkl")
             scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_c, type_check="C")
+            scheduler.optimizer_checks.final_schedule_to_excel(final_schedule_a, type_check="A")
         except:
             raise "Process checks first before saving!"
 
