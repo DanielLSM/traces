@@ -26,6 +26,8 @@ from drl.tools.plotter_util import Plotter
 class TreeScheduleRL:
     def __init__(self, cp, obs_dim=11, act_dim=2):
 
+        self.obs_dim = obs_dim
+        self.act_dim = act_dim
         self.observation_space_shape = (obs_dim, )
         self.observation_space = spaces.Box(low=0,
                                             high=1,
@@ -37,17 +39,15 @@ class TreeScheduleRL:
 
     def reward(self, action, done):
         #maybe include depth as well
-
-        if not done:
-            if action == 1:
-                return 1
-            else:
-                return -1
-        return -1
+        if action:
+            return 1
+        else:
+            return -1
 
     def make_obs(self, node, depth):
         # includes top 5 ratios
-        top_ratio_aircraft = list(node.fleet_state.keys())[0:5]
+        total_aircrafts = self.obs_dim - 6
+        top_ratio_aircraft = list(node.fleet_state.keys())[0:total_aircrafts]
         ratios = []
 
         for aircraft in top_ratio_aircraft:
@@ -77,7 +77,7 @@ class TreeScheduleRL:
 
         obs = self.make_obs(parent, depth)
         next_obs = self.make_obs(child, depth)
-        action = child.action_maintenance
+        action = parent.action_maintenance
         reward = self.reward(action, done)
 
         # import ipdb

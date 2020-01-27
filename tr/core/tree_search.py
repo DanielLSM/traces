@@ -628,7 +628,7 @@ class TreeDaysPlanner:
                         NodeScheduleDays(calendar_1,
                                          day,
                                          fleet_state_1,
-                                         action,
+                                         action_value,
                                          assignment=on_maintenance,
                                          on_c_maintenance=on_c_maintenance_1,
                                          on_c_maintenance_tats=on_c_maintenance_tats_1,
@@ -649,7 +649,7 @@ class TreeDaysPlanner:
                         NodeScheduleDays(calendar_0,
                                          day,
                                          fleet_state_0,
-                                         action,
+                                         action_value,
                                          assignment=on_maintenance,
                                          on_c_maintenance=on_c_maintenance_0,
                                          on_c_maintenance_tats=on_c_maintenance_tats_0,
@@ -742,30 +742,25 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=1000):
+    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=2000):
         t0 = time.time()
         root = deepcopy(node_schedule)
 
         for episode in range(episodes):
-            # all_nodes = self.calendar_tree[type_check].all_nodes()
-            # for node in all_nodes:
-            #     node.count = 0
             self.calendar_tree = {'A': Tree(), 'C': Tree(), 'A-RL': Tree()}
             self.calendar_tree[type_check].add_node(deepcopy(root))
 
             self.steps = 0
             self.total_reward = 0
             print("INFO: starting new episode")
-            # import ipdb
-            # ipdb.set_trace()
+
             t1 = time.time()
             node_schedule = self.solve_RL(root, type_check='A-RL', limit=1050)
 
             self.dqn_manager.pprint_episode(episode, self.steps, self.total_reward, t1, t0)
             self.dqn_manager.plotter.add_points(episode, self.total_reward)
             self.dqn_manager.plotter.show()
-            # import ipdb
-            # ipdb.set_trace()
+
         import ipdb
         ipdb.set_trace()
         return node_schedule
@@ -793,11 +788,19 @@ class TreeDaysPlanner:
             # ipdb.set_trace()
             depth = self.calendar_tree[type_check].depth()
             #####################################################
+            import ipdb
             obs, action, reward, next_obs, done = self.env.make_experience_tuple(
                 node_schedule, child, done, depth)
+            # ipdb.set_trace()
             self.steps += 1
             self.total_reward += reward
-            self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
+            day = node_schedule.day
+            if self.calendar.calendar[day]['allowed']['public holidays'] and self.calendar.calendar[
+                    day]['allowed']['a-type']:
+                self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
+                # print(action)
+                # import ipdb
+                # ipdb.set_trace()
             self.dqn_manager.total_steps += 1
             self.dqn_manager.epsilon = self.dqn_manager.exploration.value(
                 self.dqn_manager.total_steps)
