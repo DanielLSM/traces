@@ -3,7 +3,6 @@ import treelib
 import time
 import pandas as pd
 
-
 from treelib import Tree
 from tqdm import tqdm
 from collections import OrderedDict, deque
@@ -75,7 +74,7 @@ class TreeDaysPlanner:
                                 tag="Root",
                                 identifier="root")
 
-        self.calendar_tree['A-RL'].add_node(root)        
+        self.calendar_tree['A-RL'].add_node(root)
 
         self.schedule_counter = 0
         self.all_schedules = deque(maxlen=100)  # maintain only the top 10
@@ -530,9 +529,13 @@ class TreeDaysPlanner:
         #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_6'] else [0, 1]
 
         obs = self.env.make_obs(node_schedule, self.calendar_tree['A'].depth())
-        argmax_q_values, action, new_epsilon = self.dqn_manager.agent.act(obs, new_epsilon=self.dqn_manager.epsilon)
-        maintenance_actions = [1,0] if action else [0,1]
-        # print("Maintenance Action of the agent for next day: {}, {}".format(action, maintenance_actions))
+        argmax_q_values, action, new_epsilon = self.dqn_manager.agent.act(
+            obs, new_epsilon=self.dqn_manager.epsilon)
+        maintenance_actions = [1, 0] if action else [0, 1]
+        # print("Maintenance Action of the agent for next day: {}, {}".format(
+        #     action, maintenance_actions))
+        # import ipdb
+        # ipdb.set_trace()
 
         # if self.calendar_tree['A'].depth() <= 239:
         #     maintenance_actions = [1, 0] if ratio > 0.78 else [0, 1]
@@ -654,7 +657,6 @@ class TreeDaysPlanner:
 
         return childs
 
-
     def is_d_check(self, on_maintenance, fleet_state):
         d_cycle = fleet_state[on_maintenance]['D-CYCLE']
         d_cycle_max = fleet_state[on_maintenance]['D-CYCLE-MAX']
@@ -740,16 +742,16 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-
     def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=1000):
         t0 = time.time()
         root = deepcopy(node_schedule)
+
         for episode in range(episodes):
             # all_nodes = self.calendar_tree[type_check].all_nodes()
             # for node in all_nodes:
             #     node.count = 0
             self.calendar_tree = {'A': Tree(), 'C': Tree(), 'A-RL': Tree()}
-            self.calendar_tree[type_check].add_node(root)
+            self.calendar_tree[type_check].add_node(deepcopy(root))
 
             self.steps = 0
             self.total_reward = 0
@@ -758,7 +760,7 @@ class TreeDaysPlanner:
             # ipdb.set_trace()
             t1 = time.time()
             node_schedule = self.solve_RL(root, type_check='A-RL', limit=1050)
-            
+
             self.dqn_manager.pprint_episode(episode, self.steps, self.total_reward, t1, t0)
             self.dqn_manager.plotter.add_points(episode, self.total_reward)
             self.dqn_manager.plotter.show()
@@ -771,7 +773,6 @@ class TreeDaysPlanner:
     def solve_RL(self, node_schedule, type_check='A-RL', limit=1050):
         #made so we are not adding nodes that are equal to the same tree.....
         done = False
-        children = self.calendar_tree[type_check].children(node_schedule.identifier)
         if self.check_solved(node_schedule.calendar):
             return node_schedule
         if limit == 0:
@@ -787,18 +788,19 @@ class TreeDaysPlanner:
                 print("terminal state")
                 print("backtrackk")
                 done = True
-                
 
             # import ipdb
             # ipdb.set_trace()
             depth = self.calendar_tree[type_check].depth()
             #####################################################
-            obs, action, reward, next_obs, done = self.env.make_experience_tuple(node_schedule, child, done, depth)
+            obs, action, reward, next_obs, done = self.env.make_experience_tuple(
+                node_schedule, child, done, depth)
             self.steps += 1
             self.total_reward += reward
             self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
             self.dqn_manager.total_steps += 1
-            self.dqn_manager.epsilon = self.dqn_manager.exploration.value(self.dqn_manager.total_steps)
+            self.dqn_manager.epsilon = self.dqn_manager.exploration.value(
+                self.dqn_manager.total_steps)
             if self.dqn_manager.is_training:
                 self.dqn_manager.train()
             if self.dqn_manager.is_updating_nets:
@@ -811,14 +813,9 @@ class TreeDaysPlanner:
 
             try:
                 #this could be more efficient
-                equal_node_flag = False
-                for kid in children:
-                    if child.tag == node_schedule.tag:
-                        equal_node_flag = True
-                if not equal_node_flag:
-                    self.calendar_tree[type_check].add_node(child, node_schedule)
-                # import ipdb
-                # ipdb.set_trace()
+                self.calendar_tree[type_check].add_node(child, node_schedule)
+            # import ipdb
+            # ipdb.set_trace()
             except Exception as e:
                 import ipdb
                 ipdb.set_trace()
@@ -831,7 +828,6 @@ class TreeDaysPlanner:
             elif next_node is not None:
                 return next_node
         return "cutoff" if cutoff else None
-
 
     def solve_schedule(self, type_check='A'):
         if type_check == 'A' or type_check == 'C':
@@ -846,7 +842,8 @@ class TreeDaysPlanner:
                 self.phased_out = result.phased_out
             save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
             save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
-            save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
+            save_pickle(final_schedule,
+                        "build/check_files/final_schedule_{}.pkl".format(type_check))
             save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
             # result = self.solve(root, type_check='A')
             # score = self.calendar_score(result, type_check=type_check)
@@ -862,7 +859,6 @@ class TreeDaysPlanner:
             self.env = TreeScheduleRL(self.cp)
             self.dqn_manager = DQNManager(self.env)
 
-
             root_id = self.calendar_tree[type_check].root
             root = self.calendar_tree[type_check].get_node(root_id)
             result = self.solve_with_RL(root, type_check=type_check)
@@ -870,7 +866,8 @@ class TreeDaysPlanner:
             self.final_calendar[type_check] = result.calendar
             save_pickle(self.final_calendar, "build/check_files/{}_checks.pkl".format(type_check))
             save_pickle(result.calendar, "build/check_files/calendar_{}.pkl".format(type_check))
-            save_pickle(final_schedule, "build/check_files/final_schedule_{}.pkl".format(type_check))
+            save_pickle(final_schedule,
+                        "build/check_files/final_schedule_{}.pkl".format(type_check))
             save_pickle(self.phased_out, "build/check_files/phased_out.pkl")
             print("INFO: {}-checks planned for the full time horizon".format(type_check))
 
