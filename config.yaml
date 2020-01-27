@@ -1,7 +1,7 @@
 process:
   c-checks: False
-  a-checks: True
-  a-checks-rl: False
+  a-checks: False
+  a-checks-rl: True
   tasks: False
   save_checks_to_excel: False
   save_tasks_to_excel: False

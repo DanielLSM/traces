@@ -1,6 +1,8 @@
 import sys
 import treelib
+import time
 import pandas as pd
+
 
 from treelib import Tree
 from tqdm import tqdm
@@ -153,7 +155,7 @@ class TreeDaysPlanner:
         elif type_check == 'C':
             childs = self.expand_c(node_schedule, type_check)
         elif type_check == 'A-RL':
-            childs = self.expand_a(node_schedule, 'A')
+            childs = self.expand_a_RL(node_schedule, 'A')
         return childs
 
     def expand_a(self, node_schedule, type_check):
@@ -511,20 +513,26 @@ class TreeDaysPlanner:
         if day == daterinos:
             slots += 1
 
+        # this is when the agent takes an action
         on_maintenance = list(fleet_state_1.keys())[0]
         ratio = fleet_state_0[on_maintenance]['TOTAL-RATIO']
-        if self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_1']:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_1'] else [0, 1]
-        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_2']:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_2'] else [0, 1]
-        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_3']:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_3'] else [0, 1]
-        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_4']:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_4'] else [0, 1]
-        elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_5']:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_5'] else [0, 1]
-        else:
-            maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_6'] else [0, 1]
+        # if self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_1']:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_1'] else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_2']:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_2'] else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_3']:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_3'] else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_4']:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_4'] else [0, 1]
+        # elif self.calendar_tree['A'].depth() <= self.cp['a-checks']['beta_5']:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_5'] else [0, 1]
+        # else:
+        #     maintenance_actions = [1, 0] if ratio > self.cp['a-checks']['alpha_6'] else [0, 1]
+
+        obs = self.env.make_obs(node_schedule, self.calendar_tree['A'].depth())
+        argmax_q_values, action, new_epsilon = self.dqn_manager.agent.act(obs, new_epsilon=self.dqn_manager.epsilon)
+        maintenance_actions = [1,0] if action else [0,1]
+        # print("Maintenance Action of the agent for next day: {}, {}".format(action, maintenance_actions))
 
         # if self.calendar_tree['A'].depth() <= 239:
         #     maintenance_actions = [1, 0] if ratio > 0.78 else [0, 1]
@@ -547,7 +555,7 @@ class TreeDaysPlanner:
 
         on_c_maintenance_all = deepcopy(on_c_maintenance_0)
         for _ in on_c_maintenance_all:
-            print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
+            # print("{}-{} days remaining on maintenance".format(_, on_c_maintenance_tats_0[_]))
             if on_c_maintenance_tats_0[_] == 0:
                 on_c_maintenance_0.remove(_)
                 on_c_maintenance_tats_0.pop(_, None)
@@ -617,7 +625,7 @@ class TreeDaysPlanner:
                         NodeScheduleDays(calendar_1,
                                          day,
                                          fleet_state_1,
-                                         action_value,
+                                         action,
                                          assignment=on_maintenance,
                                          on_c_maintenance=on_c_maintenance_1,
                                          on_c_maintenance_tats=on_c_maintenance_tats_1,
@@ -638,7 +646,7 @@ class TreeDaysPlanner:
                         NodeScheduleDays(calendar_0,
                                          day,
                                          fleet_state_0,
-                                         action_value,
+                                         action,
                                          assignment=on_maintenance,
                                          on_c_maintenance=on_c_maintenance_0,
                                          on_c_maintenance_tats=on_c_maintenance_tats_0,
@@ -733,33 +741,90 @@ class TreeDaysPlanner:
         return "cutoff" if cutoff else None
 
 
-    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=100):
+    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=1000):
+        t0 = time.time()
         root = deepcopy(node_schedule)
         for episode in range(episodes):
+            # all_nodes = self.calendar_tree[type_check].all_nodes()
+            # for node in all_nodes:
+            #     node.count = 0
+            self.calendar_tree = {'A': Tree(), 'C': Tree(), 'A-RL': Tree()}
+            self.calendar_tree[type_check].add_node(root)
+
+            self.steps = 0
+            self.total_reward = 0
             print("INFO: starting new episode")
-            import ipdb
-            ipdb.set_trace()
-            self.solve_RL(root, type_check='A-RL', limit=1050)
+            # import ipdb
+            # ipdb.set_trace()
+            t1 = time.time()
+            node_schedule = self.solve_RL(root, type_check='A-RL', limit=1050)
             
+            self.dqn_manager.pprint_episode(episode, self.steps, self.total_reward, t1, t0)
+            self.dqn_manager.plotter.add_points(episode, self.total_reward)
+            self.dqn_manager.plotter.show()
+            # import ipdb
+            # ipdb.set_trace()
+        import ipdb
+        ipdb.set_trace()
+        return node_schedule
+
     def solve_RL(self, node_schedule, type_check='A-RL', limit=1050):
+        #made so we are not adding nodes that are equal to the same tree.....
+        done = False
+        children = self.calendar_tree[type_check].children(node_schedule.identifier)
         if self.check_solved(node_schedule.calendar):
             return node_schedule
         if limit == 0:
-            return "cutoff"
+            # return "cutoff"
+            return node_schedule
+
         cutoff = False
         for child in self.expand_with_heuristic(node_schedule, type_check=type_check):
             self.calendar_tree[type_check][node_schedule.identifier].count += 1
             if self.calendar_tree[type_check][node_schedule.identifier].count > 1:
-                print("BACKTRACKKKKKKKK")
-            # print("Child is {}, parent is {}".format(child, node_schedule))
+                # import ipdb
+                # ipdb.set_trace()
+                print("terminal state")
+                print("backtrackk")
+                done = True
+                
+
+            # import ipdb
+            # ipdb.set_trace()
+            depth = self.calendar_tree[type_check].depth()
+            #####################################################
+            obs, action, reward, next_obs, done = self.env.make_experience_tuple(node_schedule, child, done, depth)
+            self.steps += 1
+            self.total_reward += reward
+            self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
+            self.dqn_manager.total_steps += 1
+            self.dqn_manager.epsilon = self.dqn_manager.exploration.value(self.dqn_manager.total_steps)
+            if self.dqn_manager.is_training:
+                self.dqn_manager.train()
+            if self.dqn_manager.is_updating_nets:
+                self.dqn_manager.agent.update_target_nets()
+            ######################################################
+
+            #basically corresponds to backtracking
+            if done:
+                return node_schedule
+
             try:
-                self.calendar_tree[type_check].add_node(child, node_schedule)
+                #this could be more efficient
+                equal_node_flag = False
+                for kid in children:
+                    if child.tag == node_schedule.tag:
+                        equal_node_flag = True
+                if not equal_node_flag:
+                    self.calendar_tree[type_check].add_node(child, node_schedule)
+                # import ipdb
+                # ipdb.set_trace()
             except Exception as e:
                 import ipdb
                 ipdb.set_trace()
                 print(e)
-            print("Depth: day {}".format(self.calendar_tree[type_check].depth()))
-
+            # print("Depth: day {}".format(self.calendar_tree[type_check].depth(node_schedule)))
+            # print("Hangar A-Check Maintenance Decision for today: {}".format(node_schedule.action_maintenance))
             next_node = self.solve_RL(child, type_check=type_check, limit=limit - 1)
             if next_node == "cutoff":
                 cutoff = True
@@ -792,11 +857,14 @@ class TreeDaysPlanner:
             print("INFO: {}-checks planned for the full time horizon".format(type_check))
             # return result
         elif type_check == "A-RL":
+
+            from tr.core.tree_rl import TreeScheduleRL, DQNManager
+            self.env = TreeScheduleRL(self.cp)
+            self.dqn_manager = DQNManager(self.env)
+
+
             root_id = self.calendar_tree[type_check].root
             root = self.calendar_tree[type_check].get_node(root_id)
-            import ipdb
-            ipdb.set_trace()
-
             result = self.solve_with_RL(root, type_check=type_check)
             final_schedule = self.calendar_to_schedule(result, type_check)
             self.final_calendar[type_check] = result.calendar

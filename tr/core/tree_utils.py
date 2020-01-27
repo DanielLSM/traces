@@ -41,6 +41,7 @@ class NodeScheduleDays(treelib.Node):
         self.merged_with_c = merged_with_c
         self.on_maintenance_merged = on_maintenance_merged
         self.phased_out = phased_out
+        # self.identifier = str(self.day) + str(self.action_maintenance)
 
 
 def fleet_operate_A(**kwargs):
