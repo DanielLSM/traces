@@ -77,7 +77,7 @@ class TreeScheduleRL:
 
         obs = self.make_obs(parent, depth)
         next_obs = self.make_obs(child, depth)
-        action = parent.action_maintenance
+        action = child.action_maintenance
         reward = self.reward(action, done)
 
         # import ipdb

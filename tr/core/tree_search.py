@@ -532,8 +532,8 @@ class TreeDaysPlanner:
         argmax_q_values, action, new_epsilon = self.dqn_manager.agent.act(
             obs, new_epsilon=self.dqn_manager.epsilon)
         maintenance_actions = [1, 0] if action else [0, 1]
-        # print("Maintenance Action of the agent for next day: {}, {}".format(
-        #     action, maintenance_actions))
+        print("Maintenance Action of the agent for next day: {}, {}".format(
+            action, maintenance_actions))
         # import ipdb
         # ipdb.set_trace()
 
@@ -799,8 +799,8 @@ class TreeDaysPlanner:
                     day]['allowed']['a-type']:
                 self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
                 # print(action)
-                # import ipdb
-                # ipdb.set_trace()
+                import ipdb
+                ipdb.set_trace()
             self.dqn_manager.total_steps += 1
             self.dqn_manager.epsilon = self.dqn_manager.exploration.value(
                 self.dqn_manager.total_steps)
