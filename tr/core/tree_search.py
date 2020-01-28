@@ -742,7 +742,7 @@ class TreeDaysPlanner:
                 return next_node
         return "cutoff" if cutoff else None
 
-    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=2000):
+    def solve_with_RL(self, node_schedule, type_check='A-RL', limit=1050, episodes=1500):
         t0 = time.time()
         root = deepcopy(node_schedule)
 
