@@ -37,12 +37,39 @@ class TreeScheduleRL:
         self.spec = "Tree RL"
         self.cp = cp
 
-    def reward(self, action, done):
+    def reward(self, action, done, depth, ratio):
         #maybe include depth as well
-        if action:
-            return 1
+        # if action:
+        #     return 1
+        # else:
+        #     return -1
+        # we anneal the old heuristic to guide as a reward
+
+        if depth <= self.cp['a-checks']['beta_1']:
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_1'] else 0
+        elif depth <= self.cp['a-checks']['beta_2']:
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_2'] else 0
+        elif depth <= self.cp['a-checks']['beta_3']:
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_3'] else 0
+        elif depth <= self.cp['a-checks']['beta_4']:
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_4'] else 0
+        elif depth <= self.cp['a-checks']['beta_5']:
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_5'] else 0
         else:
-            return -1
+            maintenance_action = 1 if ratio > self.cp['a-checks']['alpha_6'] else 0
+
+        if done:
+            return -10
+        else:
+            if action == maintenance_action:
+                return 1
+            else:
+                return -1
+
+    def top_ratio(self, node):
+        top_ratio_aircraft = list(node.fleet_state.keys())[0]
+        ratio = node.fleet_state[top_ratio_aircraft]['TOTAL-RATIO']
+        return ratio
 
     def make_obs(self, node, depth):
         # includes top 5 ratios
@@ -78,7 +105,8 @@ class TreeScheduleRL:
         obs = self.make_obs(parent, depth)
         next_obs = self.make_obs(child, depth)
         action = child.action_maintenance
-        reward = self.reward(action, done)
+        ratio = self.top_ratio(parent)
+        reward = self.reward(action, done, depth, ratio)
 
         # import ipdb
         # ipdb.set_trace()
@@ -101,6 +129,7 @@ class DQNManager:
                  target_network_update_freq=500,
                  max_steps_per_episode=10000,
                  render_freq=20,
+                 plotter_y_title='total_steps',
                  **kwargs):
         Manager.__init__(**locals())
         self.env = env
@@ -112,7 +141,7 @@ class DQNManager:
         self.plotter = Plotter(num_lines=1,
                                title=env.spec,
                                x_label='episodes',
-                               y_label='total_reward',
+                               y_label=plotter_y_title,
                                smooth=True)
         #TODO: this should actually by smarter...
         # exploring linearly based on timesteps is really

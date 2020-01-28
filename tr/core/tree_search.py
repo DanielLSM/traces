@@ -532,8 +532,8 @@ class TreeDaysPlanner:
         argmax_q_values, action, new_epsilon = self.dqn_manager.agent.act(
             obs, new_epsilon=self.dqn_manager.epsilon)
         maintenance_actions = [1, 0] if action else [0, 1]
-        print("Maintenance Action of the agent for next day: {}, {}".format(
-            action, maintenance_actions))
+        # print("Maintenance Action of the agent for next day: {}, {}".format(
+        #     action, maintenance_actions))
         # import ipdb
         # ipdb.set_trace()
 
@@ -758,7 +758,8 @@ class TreeDaysPlanner:
             node_schedule = self.solve_RL(root, type_check='A-RL', limit=1050)
 
             self.dqn_manager.pprint_episode(episode, self.steps, self.total_reward, t1, t0)
-            self.dqn_manager.plotter.add_points(episode, self.total_reward)
+            # self.dqn_manager.plotter.add_points(episode, self.total_reward)
+            self.dqn_manager.plotter.add_points(episode, self.steps)
             self.dqn_manager.plotter.show()
 
         import ipdb
@@ -798,9 +799,10 @@ class TreeDaysPlanner:
             if self.calendar.calendar[day]['allowed']['public holidays'] and self.calendar.calendar[
                     day]['allowed']['a-type']:
                 self.dqn_manager.memory.add(obs, action, reward, next_obs, float(done))
+                # verified its the right case
                 # print(action)
-                import ipdb
-                ipdb.set_trace()
+                # import ipdb
+                # ipdb.set_trace()
             self.dqn_manager.total_steps += 1
             self.dqn_manager.epsilon = self.dqn_manager.exploration.value(
                 self.dqn_manager.total_steps)
