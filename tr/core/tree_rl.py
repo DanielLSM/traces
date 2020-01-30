@@ -5,11 +5,13 @@ import numpy as np
 import gym
 from gym import spaces
 
-from drl.tools.misc_util import LinearSchedule
-from drl.agents.dqn import DQNAgent
-from drl.managers.base import Manager
-from drl.core.memory import ReplayBuffer
-from drl.tools.plotter_util import Plotter
+# from drl.tools.misc_util import LinearSchedule
+# from drl.agents.dqn import DQNAgent
+# from drl.managers.base import Manager
+# from drl.core.memory import ReplayBuffer
+# from drl.tools.plotter_util import Plotter
+
+from tr.core.rl_utils import LinearSchedule, DQNAgent, Manager, ReplayBuffer, Plotter
 
 #obs is from type numpy array
 # array([ 0.04109495, -0.19198027,  0.05014294,  0.34569618])
