@@ -1,10 +1,10 @@
 process:
-  c-checks: False
+  c-checks: True
   a-checks: True
   a-checks-rl: False
-  tasks: False
-  save_checks_to_excel: False
-  save_tasks_to_excel: False
+  tasks: True
+  save_checks_to_excel: True
+  save_tasks_to_excel: True
 parameters:
   c-checks:
     beta_1: 240
